@@ -12165,8 +12165,8 @@ let adminItemCache = [];
 const newAdminItems = new Map();
 let inlineSaving = false;
 let inlineLoading = false;
-const passiveLabels = {health_loss_reduction:'체력 소모량 감소',mental_loss_reduction:'정신력 소모량 감소',health_recovery_bonus:'체력 회복량 증가',mental_recovery_bonus:'정신력 회복량 증가',health_loss_chance_reduction:'체력 감소 확률 감소',mental_loss_chance_reduction:'정신력 감소 확률 감소'};
-function passiveText(effects) { return Object.entries(effects || {}).filter(([k,v])=>passiveLabels[k] && Number(v)>0).map(([k,v])=>`${passiveLabels[k]} ${k.endsWith('bonus')?'+':'-'}${v}%`); }
+const passiveLabels = {health_loss_chance_reduction:'체력 감소 확률',mental_loss_chance_reduction:'정신력 감소 확률'};
+function passiveText(effects) { return Object.entries(effects || {}).filter(([k,v])=>passiveLabels[k] && Number(v)>0).map(([k,v])=>`${passiveLabels[k]} -${v}%`); }
 const inlineFields = ['name','health_effect','mental_effect','hunger_effect','usable','consumable','item_type','passive_effects'];
 function inlineBusy() { return inlineSaving || inlineLoading || itemDropSaving || document.getElementById('admin-item-bulk-input').disabled; }
 document.getElementById('admin-item-add').onclick = () => {
@@ -12439,7 +12439,7 @@ row.classList.toggle(
     typeCell.append(typeSelect);
     const effectCell = row.insertCell();
     if (draft.item_type === 'passive') {
-      const values = {...draft.passive_effects};
+      const values = Object.fromEntries(Object.entries(draft.passive_effects || {}).filter(([key]) => Object.hasOwn(passiveLabels, key)));
       const redraw = () => {
         effectCell.replaceChildren();
         for (const [key,value] of Object.entries(values)) {
@@ -12448,7 +12448,7 @@ row.classList.toggle(
           const input = document.createElement('input'); input.type='number'; input.min=0; input.max=100; input.step='any'; input.value=value;
           input.oninput=()=>{values[key]=input.valueAsNumber;updateInlineItem(item,'passive_effects',{...values},row);};
           const del=document.createElement('button'); del.textContent='×'; del.onclick=()=>{delete values[key];updateInlineItem(item,'passive_effects',{...values},row);redraw();};
-          line.append(label,input,document.createTextNode('%'),del);effectCell.append(line);
+          line.append(label,document.createTextNode('−'),input,document.createTextNode('%'),del);effectCell.append(line);
         }
         const select=document.createElement('select');
         for(const [key,label] of Object.entries(passiveLabels)) if(!(key in values)) select.add(new Option(label,key));
