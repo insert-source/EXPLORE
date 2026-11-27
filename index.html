@@ -606,6 +606,7 @@ loginOpen.onclick = () => {
   authTitle.textContent = 'LOGIN';
   authSubmit.textContent = '로그인';
   authMessage.textContent = '';
+  signupFields.style.display = 'none';
   authModal.style.display = 'flex';
 };
 
@@ -615,6 +616,7 @@ signupOpen.onclick = () => {
   authTitle.textContent = 'SIGN UP';
   authSubmit.textContent = '회원가입';
   authMessage.textContent = '';
+  signupFields.style.display = 'block';
   authModal.style.display = 'flex';
 };
 
