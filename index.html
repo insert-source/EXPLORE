@@ -2147,65 +2147,77 @@ label[for="admin-location-travel"] {
   opacity: 0.4;
   cursor: not-allowed;
 }
-  /* 관리자 캐릭터 관리 */
+  /* 관리자 캐릭터 이름 수정 */
 
-#character-admin-panel {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  background: rgba(0, 0, 0, 0.75);
+.player-name-row {
+  display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
+  margin-bottom: 18px;
 }
 
-#character-admin-close {
+.player-name-row .player-name {
+  margin-bottom: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+#player-name-edit {
+  flex-shrink: 0;
+  padding: 3px 7px;
+  font-size: 10px;
   background: transparent;
-  border: none;
-  color: #bcaab2;
-  font-size: 22px;
-  cursor: pointer;
-}
-
-#character-admin-panel input,
-#character-admin-panel textarea {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 10px;
-  background: #141114;
-  color: #e4dce0;
   border: 1px solid #49303a;
-  border-radius: 4px;
-  font-family: inherit;
-  font-size: 13px;
+  color: #998c92;
 }
 
-#character-admin-panel textarea {
-  min-height: 150px;
-  resize: vertical;
-  line-height: 1.6;
+#player-name-edit:hover {
+  color: #e8e1e4;
+  border-color: #bd6b83;
+  background: #35282e;
 }
 
-#character-admin-save {
+#player-name-editor {
+  margin-bottom: 18px;
+}
+
+#player-name-input {
   width: 100%;
-  padding: 10px;
-  background: #789184;
-  color: #141114;
-  border: none;
-  border-radius: 4px;
-  font-weight: bold;
-  cursor: pointer;
+  font-size: 14px;
 }
 
-#character-admin-save:disabled {
+.player-name-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.player-name-actions button {
+  padding: 5px 10px;
+  font-size: 11px;
+}
+
+#player-name-save {
+  background: #36594b;
+  border-color: #789184;
+  color: #b5dfc5;
+}
+
+#player-name-editor button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-#character-admin-message {
+#player-name-message {
+  color: #d88ca3;
   font-size: 11px;
-  color: #bcaab2;
-  margin-bottom: 0;
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+#player-name-message:empty {
+  display: none;
 }
 </style>
 </head>
@@ -2233,10 +2245,7 @@ label[for="admin-location-travel"] {
         style="display:none;">
   거점 관리
 </button>
-  <button id="character-admin-open"
-        style="display:none;">
-  캐릭터 관리
-</button>
+
   <button type="button" id="logout-btn" style="display:none;">로그아웃</button>
 </div>
 </header>
@@ -3475,54 +3484,7 @@ label[for="admin-location-travel"] {
 
 <!-- 관리자 장소 관리 끝 -->
   <!-- 플레이어 위치 관리창 -->
-<!-- 관리자 캐릭터 관리 -->
 
-<div id="character-admin-panel">
-
-  <div class="player-location-admin-box">
-
-    <div class="player-location-admin-header">
-
-      <div class="widget-title" style="margin:0;">
-        CHARACTER MANAGEMENT / 캐릭터 관리
-      </div>
-
-      <button id="character-admin-close">×</button>
-
-    </div>
-
-    <div class="player-location-admin-field">
-
-      <label>캐릭터 이름</label>
-
-      <input
-        type="text"
-        id="character-admin-name"
-        placeholder="캐릭터 이름"
-      >
-
-    </div>
-
-    <div class="player-location-admin-field">
-
-      <label>유서</label>
-
-      <textarea
-        id="character-admin-will"
-        placeholder="유서를 작성해 주세요."
-      ></textarea>
-
-    </div>
-
-    <button id="character-admin-save">
-      변경 사항 저장
-    </button>
-
-    <p id="character-admin-message"></p>
-
-  </div>
-
-</div>
   
 <div id="player-location-admin-panel">
 
@@ -3593,7 +3555,43 @@ label[for="admin-location-travel"] {
     <section class="widget">
       <div class="widget-title">PLAYER STATUS</div>
 
-     <div class="player-name" id="display-player-name">미등록 플레이어</div>
+   <div class="player-name-row" id="player-name-row">
+
+  <div class="player-name" id="display-player-name">
+    미등록 플레이어
+  </div>
+
+  <button
+    type="button"
+    id="player-name-edit"
+    style="display:none;"
+  >수정</button>
+
+</div>
+
+<div id="player-name-editor" style="display:none;">
+
+  <input
+    type="text"
+    id="player-name-input"
+    placeholder="캐릭터 이름"
+  >
+
+  <div class="player-name-actions">
+
+    <button type="button" id="player-name-save">
+      저장
+    </button>
+
+    <button type="button" id="player-name-cancel">
+      취소
+    </button>
+
+  </div>
+
+  <div id="player-name-message"></div>
+
+</div>
 
    <div class="stat">
   <div class="stat-header">
@@ -10549,228 +10547,182 @@ adminPlayerLocationSave.onclick = async () => {
 
 };
   // ========================================
-// 관리자 캐릭터 관리
+// ========================================
+// 관리자 캐릭터 이름 수정
 // ========================================
 
-const characterAdminOpen =
-  document.getElementById('character-admin-open');
+const playerNameRow =
+  document.getElementById('player-name-row');
 
-const characterAdminPanel =
-  document.getElementById('character-admin-panel');
+const playerNameEdit =
+  document.getElementById('player-name-edit');
 
-const characterAdminClose =
-  document.getElementById('character-admin-close');
+const playerNameEditor =
+  document.getElementById('player-name-editor');
 
-const characterAdminName =
-  document.getElementById('character-admin-name');
+const playerNameInput =
+  document.getElementById('player-name-input');
 
-const characterAdminWill =
-  document.getElementById('character-admin-will');
+const playerNameSave =
+  document.getElementById('player-name-save');
 
-const characterAdminSave =
-  document.getElementById('character-admin-save');
+const playerNameCancel =
+  document.getElementById('player-name-cancel');
 
-const characterAdminMessage =
-  document.getElementById('character-admin-message');
+const playerNameMessage =
+  document.getElementById('player-name-message');
 
-let characterAdminSaving = false;
-let characterAdminRequest = 0;
+let playerNameSaving = false;
+let playerNameRequest = 0;
 
 
-// 캐릭터 관리창 닫기
+// 이름 수정창 닫기
 
-function closeCharacterAdmin(force = false) {
+function closePlayerNameEditor(force = false) {
 
-  if (characterAdminSaving && !force) return;
+  if (playerNameSaving && !force) return;
 
-  characterAdminRequest++;
+  playerNameRequest++;
 
-  characterAdminPanel.style.display = 'none';
+  playerNameRow.style.display = 'flex';
+  playerNameEditor.style.display = 'none';
 
-  characterAdminName.value = '';
-  characterAdminWill.value = '';
-  characterAdminMessage.textContent = '';
+  playerNameInput.value = '';
+  playerNameMessage.textContent = '';
 
 }
 
 
-// 캐릭터 관리창 열기
+// 수정 버튼
 
-characterAdminOpen.onclick = async () => {
+playerNameEdit.onclick = () => {
 
-  if (characterAdminSaving) return;
+  if (playerNameSaving) return;
 
-  const requestId = ++characterAdminRequest;
+  playerNameRequest++;
 
-  characterAdminPanel.style.display = 'flex';
+  playerNameInput.value =
+    document.getElementById(
+      'display-player-name'
+    ).textContent.trim();
 
-  characterAdminName.value = '';
-  characterAdminWill.value = '';
+  playerNameMessage.textContent = '';
 
-  characterAdminSave.disabled = true;
+  playerNameRow.style.display = 'none';
+  playerNameEditor.style.display = 'block';
 
-  characterAdminMessage.textContent =
-    '캐릭터 정보를 불러오는 중...';
-
-  try {
-
-    const { data: sessionData } =
-      await supabaseClient.auth.getSession();
-
-    const user = sessionData.session?.user;
-
-    if (
-      !user ||
-      (user.email || '').toLowerCase() !== ADMIN_EMAIL
-    ) {
-      throw new Error('관리자 권한이 필요합니다.');
-    }
-
-    const { data, error } = await supabaseClient
-      .from('profiles')
-      .select('player_name, will')
-      .eq('user_id', user.id)
-      .single();
-
-    if (requestId !== characterAdminRequest) return;
-
-    if (error) throw error;
-
-    characterAdminName.value =
-      data.player_name || '';
-
-    characterAdminWill.value =
-      data.will || '';
-
-    characterAdminMessage.textContent = '';
-
-    characterAdminSave.disabled = false;
-
-  } catch (error) {
-
-    if (requestId !== characterAdminRequest) return;
-
-    characterAdminMessage.textContent =
-      error.message;
-
-  }
+  playerNameInput.focus();
+  playerNameInput.select();
 
 };
 
 
-// 캐릭터 정보 저장
+// 취소 버튼
 
-characterAdminSave.onclick = async () => {
+playerNameCancel.onclick = () => {
 
-  if (characterAdminSaving) return;
+  closePlayerNameEditor();
 
-  const playerName =
-    characterAdminName.value.trim();
+};
 
-  const will =
-    characterAdminWill.value;
 
-  if (!playerName) {
+// 이름 저장
 
-    characterAdminMessage.textContent =
+playerNameSave.onclick = async () => {
+
+  if (playerNameSaving) return;
+
+  const newName = playerNameInput.value.trim();
+
+  if (!newName) {
+
+    playerNameMessage.textContent =
       '캐릭터 이름을 입력해 주세요.';
 
     return;
 
   }
 
-  const requestId = characterAdminRequest;
+  const requestId = playerNameRequest;
 
-  characterAdminSaving = true;
-  characterAdminSave.disabled = true;
-  characterAdminName.disabled = true;
-  characterAdminWill.disabled = true;
+  playerNameSaving = true;
 
-  characterAdminMessage.textContent =
-    '저장 중...';
+  playerNameSave.disabled = true;
+  playerNameCancel.disabled = true;
+  playerNameInput.disabled = true;
+
+  playerNameMessage.textContent = '저장 중...';
 
   try {
 
     const { error } = await supabaseClient.rpc(
-      'admin_update_my_character',
+      'admin_update_my_name',
       {
-        p_player_name: playerName,
-        p_will: will
+        p_player_name: newName
       }
     );
 
     if (error) throw error;
 
-    if (requestId !== characterAdminRequest) return;
-
-    // 대시보드 이름 갱신
+    if (requestId !== playerNameRequest) return;
 
     document.getElementById(
       'display-player-name'
-    ).textContent = playerName;
-
-    // 상단 이름 갱신
+    ).textContent = newName;
 
     document.getElementById(
       'user-status'
-    ).textContent = `${playerName} [ADMIN]`;
+    ).textContent = `${newName} [ADMIN]`;
 
-    // 유서 갱신
-
-    document.getElementById(
-      'player-will-display'
-    ).value = will;
-
-    // 지도 캐릭터 정보 갱신
+    closePlayerNameEditor(true);
 
     await loadMapPlayers();
 
-    if (requestId !== characterAdminRequest) return;
-
-    characterAdminMessage.textContent =
-      '변경 사항이 저장되었습니다.';
-
   } catch (error) {
 
-    if (requestId !== characterAdminRequest) return;
+    if (requestId !== playerNameRequest) return;
 
-    characterAdminMessage.textContent =
+    playerNameMessage.textContent =
       error.code === '23505'
         ? '이미 사용 중인 캐릭터 이름입니다.'
         : error.message;
 
   } finally {
 
-    characterAdminSaving = false;
+    playerNameSaving = false;
 
-    characterAdminSave.disabled = false;
-    characterAdminName.disabled = false;
-    characterAdminWill.disabled = false;
+    playerNameSave.disabled = false;
+    playerNameCancel.disabled = false;
+    playerNameInput.disabled = false;
 
   }
 
 };
 
 
-// 닫기 버튼
+// Enter 저장 / ESC 취소
 
-characterAdminClose.onclick = () => {
-  closeCharacterAdmin();
-};
+playerNameInput.addEventListener('keydown', event => {
 
+  if (event.isComposing) return;
 
-// 팝업 바깥 클릭 시 닫기
+  if (event.key === 'Enter') {
 
-characterAdminPanel.addEventListener('click', event => {
+    event.preventDefault();
+    playerNameSave.click();
 
-  if (event.target === characterAdminPanel) {
-    closeCharacterAdmin();
+  }
+
+  if (event.key === 'Escape') {
+
+    closePlayerNameEditor();
+
   }
 
 });
 async function checkPlayerAccess() {
 
-  closeCharacterAdmin(true);
+closePlayerNameEditor(true);
 
   closeGiftModal(true);
 
@@ -10810,9 +10762,7 @@ statAdminPanel.style.display = 'none';
 locationAdminOpen.style.display = 'none';
 locationAdminPanel.style.display = 'none';
   playerLocationAdminOpen.style.display = 'none';
-  document.getElementById(
-  'character-admin-open'
-).style.display = 'none';
+playerNameEdit.style.display = 'none';
 playerLocationAdminPanel.style.display = 'none';
 cancelLocationPicking(false);
   closeLocationDetail();
@@ -10897,9 +10847,7 @@ itemAdminOpen.style.display = 'inline-block';
 statAdminOpen.style.display = 'inline-block';
 locationAdminOpen.style.display = 'inline-block';
    playerLocationAdminOpen.style.display = 'inline-block';
-  document.getElementById(
-  'character-admin-open'
-).style.display = 'inline-block';
+playerNameEdit.style.display = 'inline-block';
   renderPlayerProfile(profile);
 
   return;
