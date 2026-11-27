@@ -1336,7 +1336,10 @@ itemAdminOpen.onclick = async () => {
 
   resetAdminItemEditor();
 
+  document.getElementById('admin-inventory-message').textContent = '';
+
   await loadAdminItems();
+  await loadAdminInventoryPlayers();
 };
 
 itemAdminClose.onclick = () => {
@@ -1615,6 +1618,234 @@ async function deleteAdminItem(item) {
 
   await loadAdminItems();
 }
+  // 아이템 관리용 플레이어 목록
+async function loadAdminInventoryPlayers() {
+  const select = document.getElementById('admin-inventory-player');
+  const previousValue = select.value;
+
+  select.innerHTML = '';
+
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .select('user_id, player_name, email')
+    .eq('approved', true)
+    .eq('status', 'approved')
+    .order('player_name', { ascending: true });
+
+  if (error) {
+    document.getElementById('admin-player-inventory').textContent =
+      '플레이어 조회 실패: ' + error.message;
+    return;
+  }
+
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = '플레이어 선택';
+
+  select.appendChild(placeholder);
+
+  data.forEach(player => {
+    if (player.email.toLowerCase() === ADMIN_EMAIL) return;
+
+    const option = document.createElement('option');
+    option.value = player.user_id;
+    option.textContent = player.player_name || '이름 미등록';
+
+    select.appendChild(option);
+  });
+
+  select.value = previousValue;
+
+  if (select.selectedIndex === -1) {
+    select.value = '';
+  }
+
+  await loadAdminPlayerInventory();
+}
+  // 플레이어별 인벤토리 조회
+async function loadAdminPlayerInventory() {
+  const userId =
+    document.getElementById('admin-inventory-player').value;
+
+  const list =
+    document.getElementById('admin-player-inventory');
+
+  list.innerHTML = '';
+
+  if (!userId) {
+    list.textContent = '플레이어를 선택해 주세요.';
+    return;
+  }
+
+  list.textContent = '보유 아이템 조회 중...';
+
+  const { data, error } = await supabaseClient
+    .from('inventory')
+    .select(`
+      item_id,
+      quantity,
+      items (
+        name
+      )
+    `)
+    .eq('user_id', userId)
+    .gt('quantity', 0)
+    .order('created_at', { ascending: true });
+
+  if (
+    document.getElementById('admin-inventory-player').value !== userId
+  ) return;
+
+  if (error) {
+    list.textContent = '조회 실패: ' + error.message;
+    return;
+  }
+
+  list.innerHTML = '';
+
+  if (!data.length) {
+    list.textContent = '보유 아이템 없음';
+    return;
+  }
+
+  data.forEach(entry => {
+    const row = document.createElement('div');
+
+    row.style.cssText = `
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:8px;
+      margin-top:5px;
+      background:#171416;
+      border:1px solid #49303a;
+      border-radius:4px;
+      cursor:pointer;
+    `;
+
+    const name = document.createElement('span');
+    name.textContent = entry.items?.name || '이름 없음';
+
+    const count = document.createElement('span');
+    count.style.color = '#d88ca3';
+    count.textContent = '× ' + entry.quantity;
+
+    row.append(name, count);
+
+    row.onclick = () => {
+      document.getElementById('admin-inventory-item').value =
+        entry.item_id;
+    };
+
+    list.appendChild(row);
+  });
+}
+
+document.getElementById('admin-inventory-player').onchange =
+  loadAdminPlayerInventory;
+  // 관리자 아이템 지급 및 회수
+async function manageAdminInventory(action) {
+  const playerSelect =
+    document.getElementById('admin-inventory-player');
+
+  const itemSelect =
+    document.getElementById('admin-inventory-item');
+
+  const message =
+    document.getElementById('admin-inventory-message');
+
+  const giveBtn =
+    document.getElementById('admin-item-give');
+
+  const removeBtn =
+    document.getElementById('admin-item-remove');
+
+  const userId = playerSelect.value;
+  const itemId = itemSelect.value;
+
+  const quantity = Number(
+    document.getElementById('admin-inventory-quantity').value
+  );
+
+  if (!userId) {
+    message.textContent = '플레이어를 선택해 주세요.';
+    return;
+  }
+
+  if (!itemId) {
+    message.textContent = '아이템을 선택해 주세요.';
+    return;
+  }
+
+  if (!Number.isInteger(quantity) ||
+      quantity < 1 ||
+      quantity > 2147483647) {
+    message.textContent = '올바른 수량을 입력해 주세요.';
+    return;
+  }
+
+  const playerName =
+    playerSelect.options[playerSelect.selectedIndex].textContent;
+
+  const itemName =
+    itemSelect.options[itemSelect.selectedIndex].textContent;
+
+  const actionName =
+    action === 'give' ? '지급' : '회수';
+
+  const confirmed = confirm(
+    `플레이어: ${playerName}\n` +
+    `아이템: ${itemName}\n` +
+    `수량: ${quantity}개\n\n` +
+    `${actionName}하시겠습니까?`
+  );
+
+  if (!confirmed) return;
+
+  giveBtn.disabled = true;
+  removeBtn.disabled = true;
+
+  message.textContent = '처리 중...';
+
+  try {
+    const { error } = await supabaseClient.rpc(
+      'admin_manage_inventory',
+      {
+        p_user_id: userId,
+        p_item_id: itemId,
+        p_quantity: quantity,
+        p_action: action
+      }
+    );
+
+    if (error) throw error;
+
+    message.textContent =
+      `${playerName}: ${itemName} ${quantity}개 ${actionName} 완료!`;
+
+    await loadAdminPlayerInventory();
+
+  } catch (error) {
+    message.textContent =
+      actionName + ' 실패: ' + error.message;
+
+  } finally {
+    giveBtn.disabled = false;
+    removeBtn.disabled = false;
+  }
+}
+
+
+// 지급 버튼
+document.getElementById('admin-item-give').onclick = () => {
+  manageAdminInventory('give');
+};
+
+
+// 회수 버튼
+document.getElementById('admin-item-remove').onclick = () => {
+  manageAdminInventory('remove');
+};
 async function checkPlayerAccess() {
   const { data: sessionData } =
     await supabaseClient.auth.getSession();
