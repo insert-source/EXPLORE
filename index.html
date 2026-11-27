@@ -3166,7 +3166,11 @@ authSubmit.onclick = async () => {
 
       const item1 = document.getElementById('player-item1').value.trim();
       const item2 = document.getElementById('player-item2').value.trim();
-      const will = document.getElementById('player-will').value.trim();
+    const will =
+  document.getElementById('player-will').value;
+
+const pvpEnabled =
+  document.getElementById('signup-pvp-enabled').checked;
 
       if (
         health < 0 || health > 100 ||
@@ -3205,13 +3209,14 @@ if (result.error) throw result.error;
       const { error: saveError } = await supabaseClient.rpc(
         'save_signup_profile',
         {
-          p_player_name: loginName,
-          p_health: health,
-          p_mental: mental,
-          p_hunger: hunger,
-          p_item1: item1,
-          p_item2: item2,
-          p_will: will
+  p_player_name: loginName,
+p_health: health,
+p_mental: mental,
+p_hunger: hunger,
+p_item1: item1,
+p_item2: item2,
+p_will: will,
+p_pvp_enabled: pvpEnabled
         }
       );
 
