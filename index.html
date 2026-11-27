@@ -10281,7 +10281,9 @@ if (
 
   }
 
-  const loginName = authEmail.value.trim();
+const loginName = authEmail.value
+  .normalize('NFKC')
+  .trim();
   const password = authPassword.value;
   const passwordConfirm = authPasswordConfirm.value;
 
@@ -14252,12 +14254,42 @@ playerNameEdit.style.display = 'inline-block';
   radioIsAdmin = true;
 
 radioSendOpen.style.display = 'inline-block';
-  renderPlayerProfile(profile);
+    renderPlayerProfile(profile);
 
   return;
 }
 
   adminPanel.style.display = 'none';
+
+  // 초기 캐릭터 등록 복구
+  if (
+    !profile.signup_completed &&
+    profile.status !== 'rejected'
+  ) {
+
+    const signupName = user.app_metadata?.signup_player_name;
+
+    if (signupName) {
+
+      dashboard.style.display = 'none';
+      pendingScreen.style.display = 'none';
+      adminPanel.style.display = 'none';
+
+      if (authMode !== 'player_setup') {
+
+        openAdminCharacterSetup(false, signupName);
+
+      } else {
+
+        authModal.style.display = 'flex';
+
+      }
+
+      return;
+
+    }
+
+  }
 
 if (
   profile.status === 'approved' &&
