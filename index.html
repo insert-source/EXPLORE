@@ -6520,15 +6520,7 @@ async function loadUnreadExploreResult() {
 
    exploreResultUserId = user.id;
 
-// 조사 결과 디버깅
-console.log('[조사 결과 확인]', {
-  id: data.id,
-  location: data.location_name,
-  health_loss: data.health_loss,
-  caused_death: data.caused_death,
-  death_type: typeof data.caused_death,
-  created_at: data.created_at
-});
+
 
 showExploreResult(data);
 
