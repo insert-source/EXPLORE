@@ -1540,6 +1540,131 @@ label[for="admin-location-travel"] {
   font-size: 11px;
   line-height: 1.8;
 }
+  /* 장소별 조사 지문 관리 */
+
+.location-section-notice {
+  color: #998c92;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+#admin-location-text-count {
+  color: #789184;
+  font-size: 11px;
+  margin: 12px 0;
+}
+
+#admin-location-text-list {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 15px;
+  scrollbar-width: thin;
+  scrollbar-color: #653448 #171416;
+}
+
+.location-text-card {
+  padding: 12px;
+  margin-bottom: 8px;
+  background: #211a1e;
+  border: 1px solid #49303a;
+  border-radius: 4px;
+}
+
+.location-text-number {
+  color: #bd6b83;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.location-text-content {
+  width: 100%;
+  min-height: 90px;
+  padding: 10px;
+  resize: vertical;
+  background: #141114;
+  border: 1px solid #49303a;
+  border-radius: 4px;
+  color: #d8cbd0;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.location-text-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.location-text-buttons button {
+  font-size: 11px;
+  padding: 6px 12px;
+}
+
+.location-text-save {
+  background: #36594b;
+  border-color: #789184;
+  color: #b5dfc5;
+}
+
+#admin-location-text-add {
+  width: 100%;
+  background: #36594b;
+  border-color: #789184;
+  color: #b5dfc5;
+}
+
+.location-loss-settings button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+#admin-location-text-message {
+  color: #d88ca3;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.location-section-empty {
+  padding: 12px 0;
+  color: #998c92;
+  font-size: 12px;
+}
+
+
+/* 장소별 아이템 획득 확률 요약 */
+
+.location-drop-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #35282e;
+  color: #d8cbd0;
+  font-size: 12px;
+}
+
+.location-drop-summary-chance {
+  color: #b5dfc5;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.location-drop-summary-total {
+  margin-top: 12px;
+  padding: 12px;
+  background: #19231e;
+  border: 1px solid #496356;
+  border-radius: 4px;
+  color: #b5dfc5;
+  font-size: 12px;
+  line-height: 1.9;
+  white-space: pre-wrap;
+}
 </style>
 </head>
 
@@ -2532,6 +2657,70 @@ label[for="admin-location-travel"] {
     감소 확률에 당첨되면 1부터 최대 감소치 사이의
     정수만큼 감소합니다.<br>
     확률 또는 최대 감소치가 0이면 감소하지 않습니다.
+  </div>
+
+</div>
+      <!-- 장소별 조사 지문 관리 -->
+
+<div class="location-loss-settings">
+
+  <div class="widget-title">
+    EXPLORATION TEXT
+  </div>
+
+  <p class="location-section-notice">
+    조사 완료 시 등록된 지문 중 하나가
+    동일한 확률로 무작위 출력됩니다.
+  </p>
+
+  <div id="admin-location-text-count">
+    등록된 지문: 0개
+  </div>
+
+  <div id="admin-location-text-list">
+    등록된 장소를 선택해 주세요.
+  </div>
+
+  <div class="admin-location-field">
+
+    <label>새 조사 지문</label>
+
+    <textarea
+      id="admin-location-new-text"
+      rows="4"
+      placeholder="조사 완료 시 출력할 지문을 입력하세요."
+      disabled
+    ></textarea>
+
+  </div>
+
+  <button
+    type="button"
+    id="admin-location-text-add"
+    disabled
+  >
+    지문 추가
+  </button>
+
+  <p id="admin-location-text-message"></p>
+
+</div>
+
+
+<!-- 장소별 아이템 획득 확률 요약 -->
+
+<div class="location-loss-settings">
+
+  <div class="widget-title">
+    DROP SUMMARY
+  </div>
+
+  <p class="location-section-notice">
+    아이템 획득 확률은 아이템 관리창에서 수정할 수 있습니다.
+  </p>
+
+  <div id="admin-location-drop-summary">
+    등록된 장소를 선택해 주세요.
   </div>
 
 </div>
@@ -6578,7 +6767,493 @@ let editingLocationId = null;
 let locationPicking = false;
 let locationSaving = false;
 
+// 장소별 조사 지문 관리
 
+let locationTextRequest = 0;
+let locationTextSaving = false;
+let locationDropSummaryRequest = 0;
+
+const locationTextList =
+  document.getElementById('admin-location-text-list');
+
+const locationTextCount =
+  document.getElementById('admin-location-text-count');
+
+const locationNewText =
+  document.getElementById('admin-location-new-text');
+
+const locationTextAdd =
+  document.getElementById('admin-location-text-add');
+
+const locationTextMessage =
+  document.getElementById('admin-location-text-message');
+
+const locationDropSummary =
+  document.getElementById('admin-location-drop-summary');
+
+
+// 지문 관리 영역 초기화
+
+function resetLocationTexts() {
+
+  locationTextRequest++;
+
+  locationTextList.textContent =
+    '장소를 먼저 등록하거나 선택해 주세요.';
+
+  locationTextCount.textContent =
+    '등록된 지문: 0개';
+
+  locationNewText.value = '';
+
+  locationNewText.disabled = true;
+
+  locationTextAdd.disabled = true;
+
+  locationTextMessage.textContent = '';
+
+}
+
+
+// 지문 목록 불러오기
+
+async function loadLocationTexts(locationId) {
+
+  const requestId = ++locationTextRequest;
+
+  locationTextList.textContent =
+    '지문을 불러오는 중...';
+
+  locationTextMessage.textContent = '';
+
+  locationNewText.value = '';
+
+  locationNewText.disabled = true;
+
+  locationTextAdd.disabled = true;
+
+  const { data, error } = await supabaseClient
+    .from('location_explore_texts')
+    .select('id, content, created_at')
+    .eq('location_id', locationId)
+    .order('created_at')
+    .order('id');
+
+  if (
+    requestId !== locationTextRequest ||
+    editingLocationId !== locationId
+  ) return;
+
+  if (error) {
+
+    locationTextList.textContent =
+      '지문 조회 실패: ' + error.message;
+
+    return;
+
+  }
+
+  const texts = data || [];
+
+  locationTextList.innerHTML = '';
+
+  locationTextCount.textContent =
+    `등록된 지문: ${texts.length}개` +
+    (texts.length
+      ? ` / 개별 확률: ${(100 / texts.length).toFixed(2)}%`
+      : '');
+
+
+  if (!texts.length) {
+
+    const empty = document.createElement('div');
+
+    empty.className = 'location-section-empty';
+
+    empty.textContent =
+      '등록된 지문이 없습니다. 기본 지문이 출력됩니다.';
+
+    locationTextList.appendChild(empty);
+
+  }
+
+
+  texts.forEach((text, index) => {
+
+    const card = document.createElement('div');
+
+    card.className = 'location-text-card';
+
+
+    const number = document.createElement('div');
+
+    number.className = 'location-text-number';
+
+    number.textContent =
+      `TEXT / ${String(index + 1).padStart(2, '0')}`;
+
+
+    const textarea = document.createElement('textarea');
+
+    textarea.className = 'location-text-content';
+
+    textarea.value = text.content;
+
+
+    const buttons = document.createElement('div');
+
+    buttons.className = 'location-text-buttons';
+
+
+    const saveBtn = document.createElement('button');
+
+    saveBtn.type = 'button';
+
+    saveBtn.className = 'location-text-save';
+
+    saveBtn.textContent = '수정 저장';
+
+    saveBtn.onclick = () => {
+
+      saveLocationText(
+        locationId,
+        text.id,
+        textarea.value
+      );
+
+    };
+
+
+    const deleteBtn = document.createElement('button');
+
+    deleteBtn.type = 'button';
+
+    deleteBtn.textContent = '삭제';
+
+    deleteBtn.onclick = () => {
+
+      deleteLocationText(
+        locationId,
+        text.id
+      );
+
+    };
+
+
+    buttons.append(saveBtn, deleteBtn);
+
+    card.append(number, textarea, buttons);
+
+    locationTextList.appendChild(card);
+
+  });
+
+
+  locationNewText.disabled = locationTextSaving;
+
+  locationTextAdd.disabled = locationTextSaving;
+
+}
+
+
+// 지문 저장 중 입력 제한
+
+function setLocationTextSaving(saving) {
+
+  locationTextSaving = saving;
+
+  locationNewText.disabled =
+    saving || !editingLocationId;
+
+  locationTextAdd.disabled =
+    saving || !editingLocationId;
+
+  locationTextList
+    .querySelectorAll('button, textarea')
+    .forEach(element => {
+
+      element.disabled = saving;
+
+    });
+
+}
+
+
+// 지문 추가 및 수정
+
+async function saveLocationText(
+  locationId,
+  textId,
+  content
+) {
+
+  if (
+    locationTextSaving ||
+    editingLocationId !== locationId
+  ) return;
+
+  content = content.trim();
+
+  if (!content) {
+
+    locationTextMessage.textContent =
+      '조사 지문을 입력해 주세요.';
+
+    return;
+
+  }
+
+  setLocationTextSaving(true);
+
+  locationTextMessage.textContent = '저장 중...';
+
+  try {
+
+    let result;
+
+    if (textId) {
+
+      result = await supabaseClient
+        .from('location_explore_texts')
+        .update({ content })
+        .eq('id', textId)
+        .eq('location_id', locationId)
+        .select('id')
+        .single();
+
+    } else {
+
+      result = await supabaseClient
+        .from('location_explore_texts')
+        .insert({
+
+          location_id: locationId,
+
+          content: content
+
+        });
+
+    }
+
+    if (result.error) throw result.error;
+
+    if (editingLocationId === locationId) {
+
+      await loadLocationTexts(locationId);
+
+      if (editingLocationId === locationId) {
+
+        locationTextMessage.textContent =
+          textId
+            ? '지문 수정 완료!'
+            : '지문 추가 완료!';
+
+      }
+
+    }
+
+  } catch (error) {
+
+    if (editingLocationId === locationId) {
+
+      locationTextMessage.textContent =
+        '지문 저장 실패: ' + error.message;
+
+    }
+
+  } finally {
+
+    setLocationTextSaving(false);
+
+  }
+
+}
+
+
+// 지문 삭제
+
+async function deleteLocationText(
+  locationId,
+  textId
+) {
+
+  if (
+    locationTextSaving ||
+    editingLocationId !== locationId
+  ) return;
+
+  if (!confirm('이 조사 지문을 삭제하시겠습니까?')) {
+    return;
+  }
+
+  setLocationTextSaving(true);
+
+  try {
+
+    const { error } = await supabaseClient
+      .from('location_explore_texts')
+      .delete()
+      .eq('id', textId)
+      .eq('location_id', locationId)
+      .select('id')
+      .single();
+
+    if (error) throw error;
+
+    if (editingLocationId === locationId) {
+
+      await loadLocationTexts(locationId);
+
+      if (editingLocationId === locationId) {
+
+        locationTextMessage.textContent =
+          '지문 삭제 완료!';
+
+      }
+
+    }
+
+  } catch (error) {
+
+    if (editingLocationId === locationId) {
+
+      locationTextMessage.textContent =
+        '지문 삭제 실패: ' + error.message;
+
+    }
+
+  } finally {
+
+    setLocationTextSaving(false);
+
+  }
+
+}
+
+
+// 지문 추가 버튼 연결
+
+locationTextAdd.onclick = () => {
+
+  if (!editingLocationId) return;
+
+  saveLocationText(
+    editingLocationId,
+    null,
+    locationNewText.value
+  );
+
+};
+
+
+// 장소별 아이템 획득 확률 요약 초기화
+
+function resetLocationDropSummary() {
+
+  locationDropSummaryRequest++;
+
+  locationDropSummary.textContent =
+    '등록된 장소를 선택해 주세요.';
+
+}
+
+
+// 장소별 아이템 획득 확률 요약 불러오기
+
+async function loadLocationDropSummary(locationId) {
+
+  const requestId = ++locationDropSummaryRequest;
+
+  locationDropSummary.textContent =
+    '획득 확률을 불러오는 중...';
+
+  const { data, error } = await supabaseClient
+    .from('location_item_drops')
+    .select('drop_chance, items(name)')
+    .eq('location_id', locationId)
+    .gt('drop_chance', 0)
+    .order('drop_chance', {
+      ascending: false
+    });
+
+  if (
+    requestId !== locationDropSummaryRequest ||
+    editingLocationId !== locationId
+  ) return;
+
+  if (error) {
+
+    locationDropSummary.textContent =
+      '확률 조회 실패: ' + error.message;
+
+    return;
+
+  }
+
+  locationDropSummary.innerHTML = '';
+
+  const drops = data || [];
+
+  let total = 0;
+
+
+  if (!drops.length) {
+
+    const empty = document.createElement('div');
+
+    empty.className = 'location-section-empty';
+
+    empty.textContent =
+      '획득 가능한 아이템이 없습니다.';
+
+    locationDropSummary.appendChild(empty);
+
+  }
+
+
+  drops.forEach(drop => {
+
+    total += drop.drop_chance;
+
+    const row = document.createElement('div');
+
+    row.className = 'location-drop-summary-row';
+
+
+    const name = document.createElement('span');
+
+    name.textContent =
+      drop.items?.name || '알 수 없는 아이템';
+
+
+    const chance = document.createElement('span');
+
+    chance.className =
+      'location-drop-summary-chance';
+
+    chance.textContent =
+      `${drop.drop_chance}%`;
+
+
+    row.append(name, chance);
+
+    locationDropSummary.appendChild(row);
+
+  });
+
+
+  const summary = document.createElement('div');
+
+  summary.className =
+    'location-drop-summary-total';
+
+  summary.textContent =
+    `전체 아이템 획득 확률: ${total}%\n` +
+    `아이템 획득 실패 확률: ${100 - total}%`;
+
+  locationDropSummary.appendChild(summary);
+
+}
 // 장소 관리 팝업 열기
 locationAdminOpen.onclick = async () => {
 
@@ -6754,6 +7429,10 @@ function resetLocationEditor() {
 
   editingLocationId = null;
 
+  resetLocationTexts();
+
+  resetLocationDropSummary();
+
   document.getElementById(
     'admin-location-health-chance'
   ).value = 0;
@@ -6815,6 +7494,10 @@ function resetLocationEditor() {
 function editAdminLocation(location) {
 
   editingLocationId = location.id;
+
+  loadLocationTexts(location.id);
+
+  loadLocationDropSummary(location.id);
 
   document.getElementById(
     'admin-location-health-chance'
