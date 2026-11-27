@@ -15347,6 +15347,12 @@ document.getElementById(
   ).style.display = 'none';
 
 });
+  document.getElementById('player-list-modal')
+  .addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+      e.currentTarget.style.display = 'none';
+    }
+  });
   document.getElementById(
   'admin-item-bulk-preview'
 ).addEventListener('click', async () => {
