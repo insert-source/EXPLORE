@@ -361,29 +361,31 @@ input {
       ">
 
     <label>비밀번호</label>
-    <input id="auth-password" type="password"
-      placeholder="비밀번호"
-      style="
-        width:100%;box-sizing:border-box;padding:13px;
-        margin:8px 0 17px;background:#1b191b;
-        color:#eee;border:1px solid #49303a;
-      ">
+<input id="auth-password" type="password"
+  placeholder="비밀번호"
+  style="
+    width:100%;box-sizing:border-box;padding:13px;
+    margin:8px 0 17px;background:#1b191b;
+    color:#eee;border:1px solid #49303a;
+  ">
 
-    <!-- 회원가입 전용 -->
-    <div id="signup-fields" style="display:none;">
-  
+<!-- 회원가입 전용 -->
+<div id="signup-fields" style="display:none;">
 
-<label>캐릭터 이름</label>
-<input id="player-name" type="text"
-  placeholder="로그인에 사용할 캐릭터 이름"
-  style="width:100%;box-sizing:border-box;padding:11px;margin:8px 0 15px;background:#1b191b;color:#eee;border:1px solid #49303a;">
+  <label>비밀번호 확인</label>
+  <input id="auth-password-confirm" type="password"
+    placeholder="비밀번호 다시 입력"
+    style="
+      width:100%;box-sizing:border-box;padding:13px;
+      margin:8px 0 17px;background:#1b191b;
+      color:#eee;border:1px solid #49303a;
+    ">
 
-      <div style="border-top:1px solid #49303a;margin:10px 0 20px;"></div>
+  <div style="border-top:1px solid #49303a;margin:10px 0 20px;"></div>
 
-      <h3 style="color:#bd6b83;font-size:14px;">
-        SURVIVOR REGISTRATION
-      </h3>
-
+  <h3 style="color:#bd6b83;font-size:14px;">
+    SURVIVOR REGISTRATION
+  </h3>
      
 
      <div class="stat-control">
@@ -716,10 +718,11 @@ updateMap();
 const ADMIN_EMAIL = 'ssuejjang1@gmail.com';
 
 const authModal = document.getElementById('auth-modal');
-  const signupFields = document.getElementById('signup-fields');
+const signupFields = document.getElementById('signup-fields');
 const authTitle = document.getElementById('auth-title');
 const authEmail = document.getElementById('auth-email');
 const authPassword = document.getElementById('auth-password');
+const authPasswordConfirm = document.getElementById('auth-password-confirm');
 const authSubmit = document.getElementById('auth-submit');
 const authMessage = document.getElementById('auth-message');
 
