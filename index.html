@@ -3422,6 +3422,653 @@ adminStatSave.onclick = async () => {
   }
 
 };
+  // ========================================
+// 관리자 장소 관리
+// ========================================
+
+const locationAdminOpen =
+  document.getElementById('location-admin-open');
+
+const locationAdminPanel =
+  document.getElementById('location-admin-panel');
+
+const locationAdminClose =
+  document.getElementById('location-admin-close');
+
+const adminLocationMessage =
+  document.getElementById('admin-location-message');
+
+let editingLocationId = null;
+let locationPicking = false;
+let locationSaving = false;
+
+
+// 장소 관리 팝업 열기
+locationAdminOpen.onclick = async () => {
+
+  locationAdminPanel.style.display = 'flex';
+
+  resetLocationEditor();
+
+  await loadAdminLocations();
+
+};
+
+
+// 장소 관리 팝업 닫기
+locationAdminClose.onclick = () => {
+
+  if (locationSaving) return;
+
+  locationAdminPanel.style.display = 'none';
+
+};
+
+
+// 장소 목록 불러오기
+async function loadAdminLocations() {
+
+  const list = document.getElementById(
+    'admin-location-list'
+  );
+
+  list.textContent = '장소 목록 불러오는 중...';
+
+  const { data, error } = await supabaseClient
+    .from('map_locations')
+    .select('*')
+    .order('name', { ascending: true });
+
+  if (error) {
+
+    list.textContent =
+      '장소 조회 실패: ' + error.message;
+
+    return;
+
+  }
+
+  list.innerHTML = '';
+
+  if (!data.length) {
+
+    list.textContent = '등록된 장소가 없습니다.';
+
+    return;
+
+  }
+
+  const dangerNames = [
+    '안전',
+    '낮음',
+    '보통',
+    '높음'
+  ];
+
+  const dangerColors = [
+    '#998c92',
+    '#789184',
+    '#c3a36d',
+    '#9b304d'
+  ];
+
+  data.forEach(location => {
+
+    const row = document.createElement('div');
+
+    row.className = 'admin-location-row';
+
+
+    // 장소 정보
+    const info = document.createElement('div');
+
+    info.className = 'admin-location-info';
+
+
+    // 장소 이름
+    const name = document.createElement('div');
+
+    name.textContent =
+      `${location.is_visible ? '◆' : '◇'} ${location.name}`;
+
+    name.style.color =
+      dangerColors[location.danger_level];
+
+    name.style.fontWeight = 'bold';
+
+
+    // 장소 세부 정보
+    const meta = document.createElement('div');
+
+    meta.className = 'admin-location-meta';
+
+    meta.textContent =
+      `X ${location.x} / Y ${location.y}` +
+      ` · ${location.is_visible ? '공개' : '비공개'}` +
+      ` · 위험도: ${dangerNames[location.danger_level]}`;
+
+
+    const time = document.createElement('div');
+
+    time.className = 'admin-location-meta';
+
+    time.textContent =
+      `이동 ${location.travel_minutes}분` +
+      ` / 조사 ${location.explore_minutes}분`;
+
+    info.append(name, meta, time);
+
+
+    // 수정 및 삭제 버튼
+    const buttons = document.createElement('div');
+
+    buttons.className = 'admin-location-buttons';
+
+
+    const editBtn = document.createElement('button');
+
+    editBtn.textContent = '수정';
+
+    editBtn.onclick = () => {
+
+      if (locationSaving) return;
+
+      editAdminLocation(location);
+
+    };
+
+
+    const deleteBtn = document.createElement('button');
+
+    deleteBtn.textContent = '삭제';
+
+    deleteBtn.style.background = '#6e263d';
+    deleteBtn.style.color = '#ffffff';
+    deleteBtn.style.border = '1px solid #9b304d';
+
+    deleteBtn.onclick = () => {
+
+      deleteAdminLocation(location);
+
+    };
+
+
+    buttons.append(editBtn, deleteBtn);
+
+    row.append(info, buttons);
+
+    list.appendChild(row);
+
+  });
+
+}
+
+
+// 새 장소 입력 초기화
+function resetLocationEditor() {
+
+  editingLocationId = null;
+
+  document.getElementById(
+    'admin-location-editor-title'
+  ).textContent = 'LOCATION EDITOR / 새 장소';
+
+  document.getElementById(
+    'admin-location-name'
+  ).value = '';
+
+  document.getElementById(
+    'admin-location-description'
+  ).value = '';
+
+  document.getElementById(
+    'admin-location-x'
+  ).value = 0;
+
+  document.getElementById(
+    'admin-location-y'
+  ).value = 0;
+
+  document.getElementById(
+    'admin-location-travel'
+  ).value = 5;
+
+  document.getElementById(
+    'admin-location-explore'
+  ).value = 10;
+
+  document.getElementById(
+    'admin-location-danger'
+  ).value = 0;
+
+  document.getElementById(
+    'admin-location-visible'
+  ).checked = true;
+
+  adminLocationMessage.textContent = '';
+
+}
+
+
+// 기존 장소 수정
+function editAdminLocation(location) {
+
+  editingLocationId = location.id;
+
+  document.getElementById(
+    'admin-location-editor-title'
+  ).textContent = `LOCATION EDITOR / ${location.name}`;
+
+  document.getElementById(
+    'admin-location-name'
+  ).value = location.name;
+
+  document.getElementById(
+    'admin-location-description'
+  ).value = location.description || '';
+
+  document.getElementById(
+    'admin-location-x'
+  ).value = location.x;
+
+  document.getElementById(
+    'admin-location-y'
+  ).value = location.y;
+
+  document.getElementById(
+    'admin-location-travel'
+  ).value = location.travel_minutes;
+
+  document.getElementById(
+    'admin-location-explore'
+  ).value = location.explore_minutes;
+
+  document.getElementById(
+    'admin-location-danger'
+  ).value = location.danger_level;
+
+  document.getElementById(
+    'admin-location-visible'
+  ).checked = location.is_visible;
+
+  adminLocationMessage.textContent = '';
+
+  document.getElementById(
+    'admin-location-editor-title'
+  ).scrollIntoView({
+    behavior: 'smooth',
+    block: 'start'
+  });
+
+}
+
+
+// 새 장소 버튼
+document.getElementById(
+  'admin-location-new'
+).onclick = () => {
+
+  if (locationSaving) return;
+
+  resetLocationEditor();
+
+};
+
+
+// 저장 중 조작 방지
+function setLocationSaving(saving) {
+
+  locationSaving = saving;
+
+  locationAdminPanel.querySelectorAll(
+    'button, input, select, textarea'
+  ).forEach(element => {
+
+    element.disabled = saving;
+
+  });
+
+}
+
+
+// 장소 저장
+async function saveAdminLocation() {
+
+  if (locationSaving) return;
+
+  const numberIds = [
+    'admin-location-x',
+    'admin-location-y',
+    'admin-location-travel',
+    'admin-location-explore'
+  ];
+
+  if (numberIds.some(id =>
+    document.getElementById(id).value.trim() === ''
+  )) {
+
+    adminLocationMessage.textContent =
+      '좌표와 소요 시간을 입력해 주세요.';
+
+    return;
+
+  }
+
+  const location = {
+
+    name: document.getElementById(
+      'admin-location-name'
+    ).value.trim(),
+
+    description: document.getElementById(
+      'admin-location-description'
+    ).value.trim(),
+
+    x: Number(document.getElementById(
+      'admin-location-x'
+    ).value),
+
+    y: Number(document.getElementById(
+      'admin-location-y'
+    ).value),
+
+    travel_minutes: Number(document.getElementById(
+      'admin-location-travel'
+    ).value),
+
+    explore_minutes: Number(document.getElementById(
+      'admin-location-explore'
+    ).value),
+
+    danger_level: Number(document.getElementById(
+      'admin-location-danger'
+    ).value),
+
+    is_visible: document.getElementById(
+      'admin-location-visible'
+    ).checked
+
+  };
+
+
+  // 입력값 검사
+  if (!location.name || location.name.length > 100) {
+
+    adminLocationMessage.textContent =
+      '장소 이름은 1~100자로 입력해 주세요.';
+
+    return;
+
+  }
+
+  if (![location.x, location.y].every(value =>
+    Number.isInteger(value) &&
+    value >= -2147483648 &&
+    value <= 2147483647
+  )) {
+
+    adminLocationMessage.textContent =
+      '올바른 정수 좌표를 입력해 주세요.';
+
+    return;
+
+  }
+
+  if (![location.travel_minutes, location.explore_minutes]
+    .every(value =>
+      Number.isInteger(value) &&
+      value >= 0 &&
+      value <= 2147483647
+    )) {
+
+    adminLocationMessage.textContent =
+      '소요 시간은 0 이상의 정수여야 합니다.';
+
+    return;
+
+  }
+
+  if (![0, 1, 2, 3].includes(location.danger_level)) {
+
+    adminLocationMessage.textContent =
+      '올바른 위험도를 선택해 주세요.';
+
+    return;
+
+  }
+
+
+  setLocationSaving(true);
+
+  adminLocationMessage.textContent = '저장 중...';
+
+  try {
+
+    let result;
+
+    if (editingLocationId) {
+
+      result = await supabaseClient
+        .from('map_locations')
+        .update(location)
+        .eq('id', editingLocationId)
+        .select('id')
+        .single();
+
+    } else {
+
+      result = await supabaseClient
+        .from('map_locations')
+        .insert(location)
+        .select('id')
+        .single();
+
+    }
+
+    if (result.error) throw result.error;
+
+    resetLocationEditor();
+
+    adminLocationMessage.textContent =
+      `${location.name} 저장 완료!`;
+
+    await loadAdminLocations();
+
+    await loadMapLocations();
+
+  } catch (error) {
+
+    if (error.code === '23505') {
+
+      adminLocationMessage.textContent =
+        '이미 해당 좌표에 등록된 장소가 있습니다.';
+
+    } else {
+
+      adminLocationMessage.textContent =
+        '장소 저장 실패: ' + error.message;
+
+    }
+
+  } finally {
+
+    setLocationSaving(false);
+
+  }
+
+}
+
+
+// 저장 버튼 연결
+document.getElementById(
+  'admin-location-save'
+).onclick = saveAdminLocation;
+
+
+// 장소 삭제
+async function deleteAdminLocation(location) {
+
+  if (locationSaving) return;
+
+  const confirmed = confirm(
+    `${location.name} 장소를 삭제하시겠습니까?\n\n` +
+    '삭제한 장소는 복구할 수 없습니다.'
+  );
+
+  if (!confirmed) return;
+
+  setLocationSaving(true);
+
+  try {
+
+    const { error } = await supabaseClient
+      .from('map_locations')
+      .delete()
+      .eq('id', location.id)
+      .select('id')
+      .single();
+
+    if (error) throw error;
+
+    if (editingLocationId === location.id) {
+
+      resetLocationEditor();
+
+    }
+
+    adminLocationMessage.textContent =
+      `${location.name} 삭제 완료!`;
+
+    await loadAdminLocations();
+
+    await loadMapLocations();
+
+  } catch (error) {
+
+    adminLocationMessage.textContent =
+      '장소 삭제 실패: ' + error.message;
+
+  } finally {
+
+    setLocationSaving(false);
+
+  }
+
+}
+
+
+// ========================================
+// 지도 좌표 선택
+// ========================================
+
+
+// 좌표 선택 모드 시작
+document.getElementById(
+  'admin-location-pick'
+).onclick = () => {
+
+  if (locationSaving) return;
+
+  locationPicking = true;
+
+  locationAdminPanel.style.display = 'none';
+
+  map.classList.add('location-picking');
+
+  const notice = document.createElement('div');
+
+  notice.id = 'map-pick-notice';
+
+  notice.textContent =
+    '장소를 등록할 위치를 클릭하세요. (ESC: 취소)';
+
+  map.appendChild(notice);
+
+};
+
+
+// 좌표 선택 종료
+function cancelLocationPicking(reopen = true) {
+
+  const wasPicking = locationPicking;
+
+  locationPicking = false;
+
+  map.classList.remove('location-picking');
+
+  document.getElementById(
+    'map-pick-notice'
+  )?.remove();
+
+  if (reopen && wasPicking) {
+
+    locationAdminPanel.style.display = 'flex';
+
+  }
+
+}
+
+
+// 지도 좌표 클릭
+map.addEventListener('pointerdown', e => {
+
+  if (!locationPicking) return;
+
+  if (e.button !== 0) return;
+
+  e.preventDefault();
+
+  e.stopImmediatePropagation();
+
+  const rect = map.getBoundingClientRect();
+
+  const size = 50 * scale;
+
+  const mouseX =
+    e.clientX - rect.left - map.clientLeft;
+
+  const mouseY =
+    e.clientY - rect.top - map.clientTop;
+
+  const locationX = Math.round(
+    (mouseX - x) / size
+  );
+
+  const locationY = Math.round(
+    (mouseY - y) / size
+  );
+
+  document.getElementById(
+    'admin-location-x'
+  ).value = locationX;
+
+  document.getElementById(
+    'admin-location-y'
+  ).value = locationY;
+
+  cancelLocationPicking();
+
+  adminLocationMessage.textContent =
+    `좌표 선택 완료: X ${locationX} / Y ${locationY}`;
+
+}, true);
+
+
+// ESC로 좌표 선택 취소
+document.addEventListener('keydown', e => {
+
+  if (e.key === 'Escape' && locationPicking) {
+
+    e.preventDefault();
+
+    cancelLocationPicking();
+
+    adminLocationMessage.textContent =
+      '좌표 선택이 취소되었습니다.';
+
+  }
+
+});
 async function checkPlayerAccess() {
   const { data: sessionData } =
     await supabaseClient.auth.getSession();
@@ -3434,8 +4081,12 @@ async function checkPlayerAccess() {
 adminOpen.style.display = 'none';
 itemAdminOpen.style.display = 'none';
 itemAdminPanel.style.display = 'none';
-  statAdminOpen.style.display = 'none';
+statAdminOpen.style.display = 'none';
 statAdminPanel.style.display = 'none';
+
+locationAdminOpen.style.display = 'none';
+locationAdminPanel.style.display = 'none';
+cancelLocationPicking(false);
   if (!user) {
     document.getElementById('user-status').textContent = 'GUEST';
     loginOpen.style.display = 'inline-block';
@@ -3480,6 +4131,7 @@ document.getElementById('user-status').textContent =
 adminOpen.style.display = 'inline-block';
 itemAdminOpen.style.display = 'inline-block';
 statAdminOpen.style.display = 'inline-block';
+locationAdminOpen.style.display = 'inline-block';
   renderPlayerProfile(profile);
 
   return;
