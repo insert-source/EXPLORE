@@ -6306,6 +6306,734 @@ stealAlertConfirm.onclick = async () => {
   }
 
 };
+  // =========================
+// 무전기 시스템
+// =========================
+
+const radioPanel =
+  document.getElementById('radio-panel');
+
+const radioNew =
+  document.getElementById('radio-new');
+
+const radioTime =
+  document.getElementById('radio-time');
+
+const radioMessage =
+  document.getElementById('radio-message');
+
+const radioHistoryModal =
+  document.getElementById('radio-history-modal');
+
+const radioHistoryList =
+  document.getElementById('radio-history-list');
+
+const radioHistoryMessage =
+  document.getElementById('radio-history-message');
+
+const radioSendOpen =
+  document.getElementById('radio-send-open');
+
+const radioEditorModal =
+  document.getElementById('radio-editor-modal');
+
+const radioEditorContent =
+  document.getElementById('radio-editor-content');
+
+const radioEditorSubmit =
+  document.getElementById('radio-editor-submit');
+
+const radioEditorMessage =
+  document.getElementById('radio-editor-message');
+
+
+let radioMessages = [];
+let radioReadIds = new Set();
+
+let radioUserId = null;
+let radioIsAdmin = false;
+
+let radioRequest = 0;
+let radioLoading = false;
+let radioSaving = false;
+
+let editingRadioId = null;
+let lastRadioSnapshot = null;
+
+
+// 무전 시간 표시
+
+function formatRadioTime(value, full = false) {
+
+  const options = {
+    timeZone: 'Asia/Seoul',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  };
+
+  if (full) {
+    options.year = 'numeric';
+    options.month = '2-digit';
+    options.day = '2-digit';
+  }
+
+  return new Intl.DateTimeFormat(
+    'ko-KR',
+    options
+  ).format(new Date(value));
+
+}
+
+
+// 무전기 초기화
+
+function resetRadio() {
+
+  radioRequest++;
+
+  radioMessages = [];
+  radioReadIds = new Set();
+
+  radioUserId = null;
+  radioIsAdmin = false;
+
+  radioLoading = false;
+  radioSaving = false;
+
+  editingRadioId = null;
+  lastRadioSnapshot = null;
+
+  radioPanel.classList.remove('has-unread');
+
+  radioNew.style.display = 'none';
+  radioSendOpen.style.display = 'none';
+
+  radioTime.textContent = '';
+
+  radioMessage.textContent =
+    '수신된 무전이 없습니다.';
+
+  radioHistoryModal.style.display = 'none';
+  radioEditorModal.style.display = 'none';
+
+  radioHistoryList.textContent =
+    '수신된 무전이 없습니다.';
+
+  radioHistoryMessage.textContent = '';
+  radioEditorMessage.textContent = '';
+  radioEditorContent.value = '';
+
+  radioEditorContent.disabled = false;
+  radioEditorSubmit.disabled = false;
+
+}
+
+
+// 무전기 메인 화면 갱신
+
+function renderRadioPanel() {
+
+  const latest = radioMessages[0];
+
+  if (latest) {
+
+    radioTime.textContent =
+      formatRadioTime(latest.created_at);
+
+    radioMessage.textContent =
+      latest.content;
+
+  } else {
+
+    radioTime.textContent = '';
+
+    radioMessage.textContent =
+      '수신된 무전이 없습니다.';
+
+  }
+
+  const unreadCount = radioMessages.filter(
+    message => !radioReadIds.has(message.id)
+  ).length;
+
+  radioNew.style.display =
+    unreadCount > 0 ? 'inline-block' : 'none';
+
+  radioNew.textContent = `NEW ${unreadCount}`;
+
+  radioPanel.classList.toggle(
+    'has-unread',
+    unreadCount > 0
+  );
+
+}
+
+
+// 무전 기록창 렌더링
+
+function renderRadioHistory() {
+
+  const previousScroll =
+    radioHistoryList.scrollTop;
+
+  radioHistoryList.innerHTML = '';
+
+  if (radioMessages.length === 0) {
+
+    radioHistoryList.textContent =
+      '수신된 무전이 없습니다.';
+
+    return;
+
+  }
+
+  radioMessages.forEach(message => {
+
+    const entry = document.createElement('div');
+
+    entry.className = 'radio-entry';
+
+    if (!radioReadIds.has(message.id)) {
+      entry.classList.add('is-unread');
+    }
+
+    const header = document.createElement('div');
+
+    header.className = 'radio-entry-header';
+
+    const time = document.createElement('span');
+
+    time.className = 'radio-entry-time';
+
+    time.textContent =
+      formatRadioTime(message.created_at, true);
+
+    header.appendChild(time);
+
+
+    // 관리자 전용 수정 및 삭제 버튼
+
+    if (radioIsAdmin) {
+
+      const actions =
+        document.createElement('div');
+
+      actions.className = 'radio-entry-actions';
+
+      const editBtn =
+        document.createElement('button');
+
+      editBtn.type = 'button';
+      editBtn.textContent = '수정';
+
+      editBtn.onclick = () => {
+        openRadioEditor(message);
+      };
+
+      const deleteBtn =
+        document.createElement('button');
+
+      deleteBtn.type = 'button';
+      deleteBtn.textContent = '삭제';
+
+      deleteBtn.className =
+        'radio-entry-delete';
+
+      deleteBtn.onclick = () => {
+        deleteRadioMessage(message.id);
+      };
+
+      actions.append(editBtn, deleteBtn);
+
+      header.appendChild(actions);
+
+    }
+
+    const content =
+      document.createElement('div');
+
+    content.className = 'radio-entry-content';
+
+    content.textContent = message.content;
+
+    entry.append(header, content);
+
+    radioHistoryList.appendChild(entry);
+
+  });
+
+  radioHistoryList.scrollTop = previousScroll;
+
+}
+
+
+// 무전 읽음 처리
+
+async function markRadioMessagesRead() {
+
+  const unreadIds = radioMessages
+    .filter(message => !radioReadIds.has(message.id))
+    .map(message => message.id);
+
+  if (unreadIds.length === 0) return;
+
+  const requestId = radioRequest;
+
+  const { error } = await supabaseClient.rpc(
+    'mark_radio_messages_read',
+    {
+      p_message_ids: unreadIds
+    }
+  );
+
+  if (requestId !== radioRequest) return;
+
+  if (error) {
+
+    radioHistoryMessage.textContent =
+      '읽음 처리 실패: ' + error.message;
+
+    return;
+
+  }
+
+  unreadIds.forEach(id => {
+    radioReadIds.add(id);
+  });
+
+  lastRadioSnapshot = null;
+
+  renderRadioPanel();
+  renderRadioHistory();
+
+}
+
+
+// 전체 무전 불러오기
+
+async function loadRadioMessages() {
+
+  if (radioLoading || radioSaving) return;
+
+  radioLoading = true;
+
+  const requestId = radioRequest;
+
+  try {
+
+    const { data: sessionData } =
+      await supabaseClient.auth.getSession();
+
+    const user = sessionData.session?.user;
+
+    if (!user || requestId !== radioRequest) {
+      return;
+    }
+
+    radioUserId = user.id;
+
+    radioIsAdmin =
+      user.email?.toLowerCase() === ADMIN_EMAIL;
+
+    radioSendOpen.style.display =
+      radioIsAdmin ? 'inline-block' : 'none';
+
+
+    // 페이지 단위로 전체 무전 기록 조회
+
+    const messages = [];
+    const readIds = new Set();
+
+    const pageSize = 500;
+
+    for (let offset = 0; ; offset += pageSize) {
+
+      const { data, error } = await supabaseClient
+        .from('radio_messages')
+        .select('id, content, created_at, updated_at')
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(offset, offset + pageSize - 1);
+
+      if (error) throw error;
+
+      if (requestId !== radioRequest) return;
+
+      messages.push(...data);
+
+      if (data.length < pageSize) break;
+
+    }
+
+
+    // 자신의 읽음 기록 조회
+
+    for (let offset = 0; ; offset += pageSize) {
+
+      const { data, error } = await supabaseClient
+        .from('radio_message_reads')
+        .select('message_id')
+        .eq('user_id', user.id)
+        .order('message_id')
+        .range(offset, offset + pageSize - 1);
+
+      if (error) throw error;
+
+      if (requestId !== radioRequest) return;
+
+      data.forEach(row => {
+        readIds.add(row.message_id);
+      });
+
+      if (data.length < pageSize) break;
+
+    }
+
+    const snapshot = JSON.stringify([
+      messages,
+      [...readIds]
+    ]);
+
+    radioMessages = messages;
+    radioReadIds = readIds;
+
+    renderRadioPanel();
+
+    radioHistoryMessage.textContent = '';
+
+    if (radioHistoryModal.style.display === 'flex') {
+
+      if (snapshot !== lastRadioSnapshot) {
+        renderRadioHistory();
+      }
+
+      lastRadioSnapshot = snapshot;
+
+      await markRadioMessagesRead();
+
+    } else {
+
+      lastRadioSnapshot = snapshot;
+
+    }
+
+  } catch (error) {
+
+    if (requestId !== radioRequest) return;
+
+    console.error('무전 조회 실패:', error);
+
+    radioHistoryMessage.textContent =
+      '무전 조회 실패: ' + error.message;
+
+  } finally {
+
+    if (requestId === radioRequest) {
+      radioLoading = false;
+    }
+
+  }
+
+}
+
+
+// 무전 기록창 열기
+
+document.getElementById(
+  'radio-history-open'
+).onclick = async () => {
+
+  radioHistoryModal.style.display = 'flex';
+
+  radioHistoryMessage.textContent = '';
+
+  renderRadioHistory();
+
+  await loadRadioMessages();
+
+  if (radioHistoryModal.style.display === 'flex') {
+    await markRadioMessagesRead();
+  }
+
+};
+
+
+// 무전 기록창 닫기
+
+document.getElementById(
+  'radio-history-close'
+).onclick = () => {
+
+  radioHistoryModal.style.display = 'none';
+
+};
+
+
+radioHistoryModal.addEventListener(
+  'click',
+  event => {
+
+    if (event.target === radioHistoryModal) {
+
+      radioHistoryModal.style.display = 'none';
+
+    }
+
+  }
+);
+  // =========================
+// 관리자 무전 관리
+// =========================
+
+
+// 무전 송신 및 수정창 열기
+
+function openRadioEditor(message = null) {
+
+  if (!radioIsAdmin || radioSaving) return;
+
+  editingRadioId = message?.id || null;
+
+  document.getElementById(
+    'radio-editor-title'
+  ).textContent = editingRadioId
+    ? 'RADIO EDIT'
+    : 'RADIO TRANSMISSION';
+
+  radioEditorSubmit.textContent =
+    editingRadioId ? '수정 저장' : '송신';
+
+  radioEditorContent.value =
+    message?.content || '';
+
+  radioEditorMessage.textContent = '';
+
+  radioEditorModal.style.display = 'flex';
+
+  radioEditorContent.focus();
+
+}
+
+
+// 무전 입력창 닫기
+
+function closeRadioEditor(force = false) {
+
+  if (radioSaving && !force) return;
+
+  radioEditorModal.style.display = 'none';
+
+  radioEditorContent.value = '';
+  radioEditorMessage.textContent = '';
+
+  editingRadioId = null;
+
+}
+
+
+radioSendOpen.onclick = () => {
+
+  openRadioEditor();
+
+};
+
+
+document.getElementById(
+  'radio-editor-close'
+).onclick = () => {
+
+  closeRadioEditor();
+
+};
+
+
+document.getElementById(
+  'radio-editor-cancel'
+).onclick = () => {
+
+  closeRadioEditor();
+
+};
+
+
+radioEditorModal.addEventListener(
+  'click',
+  event => {
+
+    if (event.target === radioEditorModal) {
+      closeRadioEditor();
+    }
+
+  }
+);
+
+
+// 무전 송신 및 수정 저장
+
+radioEditorSubmit.onclick = async () => {
+
+  if (!radioIsAdmin || radioSaving) return;
+
+  const content =
+    radioEditorContent.value.trim();
+
+  if (!content) {
+
+    radioEditorMessage.textContent =
+      '무전 내용을 입력해 주세요.';
+
+    return;
+
+  }
+
+  const messageId = editingRadioId;
+
+  const confirmed = confirm(
+    messageId
+      ? '무전 내용을 수정하시겠습니까?'
+      : '모든 플레이어에게 무전을 송신하시겠습니까?'
+  );
+
+  if (!confirmed) return;
+
+  const requestId = radioRequest;
+
+  radioSaving = true;
+
+  radioEditorSubmit.disabled = true;
+  radioEditorContent.disabled = true;
+
+  radioEditorMessage.textContent =
+    messageId ? '수정 중...' : '송신 중...';
+
+  try {
+
+    let result;
+
+    if (messageId) {
+
+      result = await supabaseClient.rpc(
+        'admin_edit_radio',
+        {
+          p_message_id: messageId,
+          p_content: content
+        }
+      );
+
+    } else {
+
+      result = await supabaseClient.rpc(
+        'admin_send_radio',
+        {
+          p_content: content
+        }
+      );
+
+    }
+
+    if (result.error) throw result.error;
+
+    if (requestId !== radioRequest) return;
+
+
+    // 이전 조회 요청 무효화
+
+    radioRequest++;
+    radioLoading = false;
+
+    closeRadioEditor(true);
+
+    radioSaving = false;
+
+    radioEditorSubmit.disabled = false;
+    radioEditorContent.disabled = false;
+
+    lastRadioSnapshot = null;
+
+    await loadRadioMessages();
+
+  } catch (error) {
+
+    if (requestId !== radioRequest) return;
+
+    radioEditorMessage.textContent =
+      '저장 실패: ' + error.message;
+
+  } finally {
+
+    if (requestId === radioRequest) {
+
+      radioSaving = false;
+
+      radioEditorSubmit.disabled = false;
+      radioEditorContent.disabled = false;
+
+    }
+
+  }
+
+};
+
+
+// 무전 삭제
+
+async function deleteRadioMessage(messageId) {
+
+  if (!radioIsAdmin || radioSaving) return;
+
+  const confirmed = confirm(
+    '이 무전을 삭제하시겠습니까?\n\n' +
+    '모든 플레이어의 무전 기록에서도 삭제되며 ' +
+    '복구할 수 없습니다.'
+  );
+
+  if (!confirmed) return;
+
+  const requestId = radioRequest;
+
+  radioSaving = true;
+
+  radioHistoryMessage.textContent =
+    '삭제 중...';
+
+  try {
+
+    const { error } = await supabaseClient.rpc(
+      'admin_delete_radio',
+      {
+        p_message_id: messageId
+      }
+    );
+
+    if (error) throw error;
+
+    if (requestId !== radioRequest) return;
+
+    radioRequest++;
+    radioLoading = false;
+    radioSaving = false;
+
+    lastRadioSnapshot = null;
+
+    await loadRadioMessages();
+
+  } catch (error) {
+
+    if (requestId !== radioRequest) return;
+
+    radioHistoryMessage.textContent =
+      '삭제 실패: ' + error.message;
+
+  } finally {
+
+    if (requestId === radioRequest) {
+      radioSaving = false;
+    }
+
+  }
+
+}
 function startMapPlayersRefresh() {
 
   stopMapPlayersRefresh();
@@ -6339,15 +7067,17 @@ await loadMapPlayers();
 
 
   if (user) {
-        await Promise.all([
+     await Promise.all([
 
-          refreshPlayerStats(),
+  refreshPlayerStats(),
 
-          loadInventory(),
+  loadInventory(),
 
-          loadActivityLogs()
+  loadActivityLogs(),
 
-        ]);
+  loadRadioMessages()
+
+]);
 
 
    // 미확인 조사 결과 확인
@@ -11093,8 +11823,9 @@ playerNameInput.addEventListener('keydown', event => {
 });
 async function checkPlayerAccess() {
 
-closePlayerNameEditor(true);
+  resetRadio();
 
+  closePlayerNameEditor(true);
   closeGiftModal(true);
 
   closeStealModal(true);
@@ -11219,6 +11950,9 @@ statAdminOpen.style.display = 'inline-block';
 locationAdminOpen.style.display = 'inline-block';
    playerLocationAdminOpen.style.display = 'inline-block';
 playerNameEdit.style.display = 'inline-block';
+  radioIsAdmin = true;
+
+radioSendOpen.style.display = 'inline-block';
   renderPlayerProfile(profile);
 
   return;
