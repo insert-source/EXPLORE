@@ -3264,6 +3264,17 @@ label[for="admin-location-travel"] {
 #admin-location-filter{background:#171416;color:#d8cbd0;border:1px solid #49303a;padding:8px;border-radius:4px}
 .admin-location-row.is-selected{border-color:#789184;background:#25352e}
 @media(max-width:750px){.location-workspace{grid-template-columns:1fr}.location-sidebar{position:static}#admin-location-list{max-height:240px}}
+
+#inventory-list .item.passive-active {
+  border-color: #64f5c4;
+  box-shadow: 0 0 9px rgba(100,245,196,.48), inset 0 0 8px rgba(100,245,196,.12);
+}
+#inventory-list .passive-active-label {
+  color: #83ffda;
+  font-size: 10px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
 </style>
 </head>
 
@@ -11232,6 +11243,16 @@ function renderInventory(items) {
     return;
   }
 
+  const bestEffects = {};
+  if (!currentPlayerIsDead) {
+    for (const entry of items) {
+      if (entry.quantity <= 0 || entry.items?.item_type !== 'passive') continue;
+      for (const [key, value] of Object.entries(entry.items.passive_effects || {})) {
+        if (!Object.hasOwn(passiveLabels, key) || !Number.isFinite(Number(value)) || Number(value) <= 0) continue;
+        bestEffects[key] = Math.max(bestEffects[key] || 0, Number(value));
+      }
+    }
+  }
   items.forEach(entry => {
     const info = entry.items;
 
@@ -11239,6 +11260,11 @@ function renderInventory(items) {
 
     const item = document.createElement('div');
     item.className = 'item';
+    const activeEffects = info.item_type === 'passive' && entry.quantity > 0
+      ? Object.entries(info.passive_effects || {}).filter(([key, value]) =>
+          Number(value) > 0 && bestEffects[key] === Number(value))
+      : [];
+    if (activeEffects.length) item.classList.add('passive-active');
     item.style.flexDirection = 'column';
     item.style.alignItems = 'stretch';
     item.style.gap = '6px';
@@ -11258,6 +11284,12 @@ function renderInventory(items) {
 
     top.append(name, count);
     item.appendChild(top);
+    if (activeEffects.length) {
+      const badge = document.createElement('div');
+      badge.className = 'passive-active-label';
+      badge.textContent = '적용 중 · ' + passiveText(Object.fromEntries(activeEffects)).join(' / ');
+      item.appendChild(badge);
+    }
 
     // 아이템 설명
     const description = document.createElement('div');
