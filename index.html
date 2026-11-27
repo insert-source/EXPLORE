@@ -5488,7 +5488,6 @@ max-width:calc(100vw - 30px);
 
 </div>
 
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL = 'https://ufenbbopvqtcwpvfpgtd.supabase.co';
@@ -15329,6 +15328,26 @@ playerNameInput.addEventListener('keydown', event => {
 
     name.textContent = player.player_name
       + (player.is_dead ? ' [사망]' : '');
+
+    if (player.user_id === mapCurrentUserId) {
+      name.style.display = 'flex';
+      name.style.alignItems = 'center';
+      name.style.gap = '8px';
+      name.style.flexWrap = 'wrap';
+      const badge = document.createElement('span');
+    badge.textContent = 'YOU';
+      badge.style.cssText = `
+        display:inline-flex;align-items:center;
+        padding:1px 8px;border-radius:12px;
+        border:1px solid #78bba6;background:#203b34;
+        color:#b5f3dc;font-size:10px;font-weight:700;
+        letter-spacing:1px;line-height:1.6;
+        box-shadow:0 0 8px #78bba633;
+      `;
+      name.appendChild(badge);
+      button.style.borderColor = '#659c8b';
+      button.style.background = '#192522';
+    }
 
     const location = document.createElement('div');
 
