@@ -410,6 +410,73 @@ input {
   text-align: right;
   color: #998c92;
 }
+  /* 지도 장소 아이콘 */
+
+#map-location-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.map-location {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  pointer-events: auto;
+  user-select: none;
+}
+
+.map-location-icon {
+  font-size: 24px;
+  line-height: 24px;
+  text-shadow: 0 0 8px currentColor;
+  transition: transform 0.15s;
+}
+
+.map-location-name {
+  padding: 4px 8px;
+  background: rgba(20, 17, 20, 0.9);
+  border: 1px solid #49303a;
+  border-radius: 3px;
+  color: #d8cbd0;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.map-location:hover .map-location-icon {
+  transform: scale(1.3);
+}
+
+.map-location:hover .map-location-name {
+  border-color: #d88ca3;
+  color: #ffffff;
+}
+
+.map-location-hidden {
+  opacity: 0.45;
+}
+
+.map-danger-0 {
+  color: #998c92;
+}
+
+.map-danger-1 {
+  color: #789184;
+}
+
+.map-danger-2 {
+  color: #c3a36d;
+}
+
+.map-danger-3 {
+  color: #9b304d;
+}
 </style>
 </head>
 
@@ -1190,7 +1257,21 @@ let dragging = false;
 let startX = 0;
 let startY = 0;
 
+let mapLocations = [];
+let mapLocationRequest = 0;
+
+
+// 장소 아이콘 전용 레이어 생성
+const mapLocationLayer = document.createElement("div");
+
+mapLocationLayer.id = "map-location-layer";
+
+map.appendChild(mapLocationLayer);
+
+
+// 지도 화면 갱신
 function updateMap() {
+
   const size = 50 * scale;
 
   grid.style.backgroundSize = `${size}px ${size}px`;
@@ -1198,26 +1279,228 @@ function updateMap() {
 
   coordinates.textContent =
     `X : ${Math.round(-x / size)} / Y : ${Math.round(-y / size)} / ZOOM : ${Math.round(scale * 100)}%`;
+
+  updateMapLocationPositions();
+
 }
 
+
+// 장소 아이콘 위치 갱신
+function updateMapLocationPositions() {
+
+  const size = 50 * scale;
+
+  mapLocationLayer
+    .querySelectorAll(".map-location")
+    .forEach(marker => {
+
+      const locationX = Number(marker.dataset.x);
+      const locationY = Number(marker.dataset.y);
+
+      marker.style.left =
+        `${x + locationX * size}px`;
+
+      marker.style.top =
+        `${y + locationY * size}px`;
+
+    });
+
+}
+
+
+// 장소 데이터 불러오기
+async function loadMapLocations() {
+
+  const requestId = ++mapLocationRequest;
+
+  mapLocations = [];
+  mapLocationLayer.innerHTML = "";
+
+  const { data: sessionData } =
+    await supabaseClient.auth.getSession();
+
+  const user = sessionData.session?.user;
+
+  if (!user || requestId !== mapLocationRequest) return;
+
+  const { data, error } = await supabaseClient
+    .from("map_locations")
+    .select("*")
+    .order("name", { ascending: true });
+
+  if (requestId !== mapLocationRequest) return;
+
+  if (error) {
+
+    console.error("지도 장소 조회 실패:", error);
+
+    return;
+
+  }
+
+  mapLocations = data || [];
+
+  renderMapLocations();
+
+}
+
+
+// 장소 아이콘 생성
+function renderMapLocations() {
+
+  mapLocationLayer.innerHTML = "";
+
+  mapLocations.forEach(location => {
+
+    const marker = document.createElement("div");
+
+    marker.className = "map-location";
+
+    marker.dataset.id = location.id;
+    marker.dataset.x = location.x;
+    marker.dataset.y = location.y;
+
+    if (!location.is_visible) {
+
+      marker.classList.add("map-location-hidden");
+
+    }
+
+
+    // 장소 아이콘
+    const icon = document.createElement("span");
+
+    icon.className =
+      `map-location-icon map-danger-${location.danger_level}`;
+
+    icon.textContent = location.is_visible ? "◆" : "◇";
+
+
+    // 장소 이름
+    const name = document.createElement("span");
+
+    name.className = "map-location-name";
+
+    name.textContent = location.name;
+
+
+    // 아이콘 클릭 시 지도 드래그 방지
+    marker.addEventListener("pointerdown", e => {
+
+      e.stopPropagation();
+
+    });
+
+
+    // 임시 장소 상세 정보
+    marker.addEventListener("click", e => {
+
+      e.stopPropagation();
+
+      const dangerNames = [
+        "안전",
+        "낮음",
+        "보통",
+        "높음"
+      ];
+
+      alert(
+        `${location.name}\n\n` +
+        `${location.description || "등록된 설명이 없습니다."}\n\n` +
+        `좌표: X ${location.x} / Y ${location.y}\n` +
+        `이동 시간: ${location.travel_minutes}분\n` +
+        `조사 시간: ${location.explore_minutes}분\n` +
+        `위험도: ${dangerNames[location.danger_level]}`
+      );
+
+    });
+
+
+    marker.append(icon, name);
+
+    mapLocationLayer.appendChild(marker);
+
+  });
+
+  updateMapLocationPositions();
+
+}
+
+
+// 지도 드래그 시작
 map.addEventListener("pointerdown", (e) => {
+
   if (e.button !== 0) return;
 
   dragging = true;
+
   startX = e.clientX - x;
   startY = e.clientY - y;
 
   map.classList.add("dragging");
+
   map.setPointerCapture(e.pointerId);
+
 });
 
+
+// 지도 드래그 이동
 map.addEventListener("pointermove", (e) => {
+
   if (!dragging) return;
 
   x = e.clientX - startX;
   y = e.clientY - startY;
 
   updateMap();
+
+});
+
+
+// 지도 드래그 종료
+map.addEventListener("pointerup", () => {
+
+  dragging = false;
+
+  map.classList.remove("dragging");
+
+});
+
+
+map.addEventListener("pointercancel", () => {
+
+  dragging = false;
+
+  map.classList.remove("dragging");
+
+});
+
+
+// 지도 확대 및 축소
+map.addEventListener("wheel", (e) => {
+
+  e.preventDefault();
+
+  const oldScale = scale;
+
+  const rect = map.getBoundingClientRect();
+
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  scale *= e.deltaY < 0 ? 1.1 : 0.9;
+
+  scale = Math.max(0.25, Math.min(3, scale));
+
+  x = mouseX - (mouseX - x) * (scale / oldScale);
+  y = mouseY - (mouseY - y) * (scale / oldScale);
+
+  updateMap();
+
+}, { passive: false });
+
+
+updateMap();
 });
 
 map.addEventListener("pointerup", () => {
@@ -1847,6 +2130,7 @@ function renderPlayerProfile(profile) {
   // 활동 로그 불러오기
   loadActivityLogs();
 }
+  loadMapLocations();
   // 유서 저장
 document.getElementById('save-will-btn').addEventListener('click', async () => {
   const willText = document.getElementById('player-will-display').value;
