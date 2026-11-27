@@ -2905,6 +2905,16 @@ label[for="admin-location-travel"] {
 #player-name-row.is-dead #display-player-name {
   color: #d88ca3;
 }
+  /* 사망자 유서 수정 제한 */
+
+#save-will-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+#player-will-display:read-only {
+  cursor: default;
+}
 </style>
 </head>
 
@@ -9902,7 +9912,15 @@ function updatePlayerDeathStatus(isDead) {
     'is-dead',
     currentPlayerIsDead
   );
+  // 사망자 유서 수정 제한
 
+  document.getElementById(
+    'player-will-display'
+  ).readOnly = currentPlayerIsDead;
+
+  document.getElementById(
+    'save-will-btn'
+  ).disabled = currentPlayerIsDead;
 
   // 생존 상태에서 사망 상태로 변경된 경우
 
@@ -10424,10 +10442,25 @@ function renderPlayerProfile(profile) {
 }
 
 // 유서 저장
+
 document.getElementById('save-will-btn').addEventListener('click', async () => {
+
   const willText = document.getElementById('player-will-display').value;
   const message = document.getElementById('will-message');
   const button = document.getElementById('save-will-btn');
+
+
+  // 사망자 유서 저장 제한
+
+  if (currentPlayerIsDead) {
+
+    message.textContent =
+      '사망한 플레이어는 유서를 수정할 수 없습니다.';
+
+    return;
+
+  }
+
 
   button.disabled = true;
   message.textContent = '저장 중...';
@@ -10437,12 +10470,17 @@ document.getElementById('save-will-btn').addEventListener('click', async () => {
   });
 
   if (error) {
+
     message.textContent = '저장 실패: ' + error.message;
+
   } else {
+
     message.textContent = '유서가 저장되었습니다.';
+
   }
 
-  button.disabled = false;
+  button.disabled = currentPlayerIsDead;
+
 });
 // 승인 상태 확인
   // 관리자 아이템 관리 팝업
