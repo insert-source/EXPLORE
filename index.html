@@ -8865,6 +8865,8 @@ async function startPlayerExplore(location) {
 
   if (currentPlayerIsDead) return;
 
+  if (currentPlayerMental <= 0) return;
+
   if (!location || movementActionPending) return;
 
   if (!confirm(
@@ -8991,6 +8993,16 @@ function updateLocationActionButtons() {
 
     message.textContent =
       '사망한 플레이어는 조사할 수 없습니다.';
+
+    return;
+
+  }
+    // 정신력 부족 시 조사 제한
+
+  if (currentPlayerMental <= 0) {
+
+    message.textContent =
+      '정신력이 부족하여 조사할 수 없습니다.';
 
     return;
 
@@ -9895,6 +9907,7 @@ function getStatColor(value) {
 // 플레이어 사망 상태 관리
 
 let currentPlayerIsDead = false;
+let currentPlayerMental = 0;
 
 
 // 플레이어 사망 상태 표시
@@ -10004,6 +10017,18 @@ function updatePlayerStat(type, value) {
 
   fill.style.width = `${value}%`;
   fill.style.backgroundColor = color;
+
+
+  // 현재 정신력 상태 갱신
+
+  if (type === 'mental') {
+
+    currentPlayerMental = Number(value);
+
+    updateLocationActionButtons();
+
+  }
+
 }
   // 플레이어 인벤토리 불러오기
   // 인벤토리 화면 표시
