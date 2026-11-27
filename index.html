@@ -1381,6 +1381,47 @@ top: 0;
   background: #25352e;
   border-color: #789184;
 }
+  /* 거점 관리 */
+
+.base-current-card {
+  padding: 20px;
+  margin-bottom: 20px;
+  background: #19231e;
+  border: 1px solid #496356;
+  border-radius: 5px;
+  text-align: center;
+}
+
+.base-current-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #789184;
+  margin-bottom: 12px;
+}
+
+.base-current-icon {
+  font-size: 32px;
+  color: #9dc5ae;
+  text-shadow: 0 0 12px #789184;
+  margin-bottom: 8px;
+}
+
+#admin-base-current {
+  font-size: 20px;
+  font-weight: bold;
+  color: #b5dfc5;
+}
+
+.base-change-notice {
+  padding: 12px;
+  margin: 15px 0;
+  background: #302129;
+  border: 1px solid #653448;
+  border-radius: 4px;
+  color: #d88ca3;
+  font-size: 11px;
+  line-height: 1.8;
+}
 </style>
 </head>
 
@@ -1403,9 +1444,9 @@ top: 0;
   <button id="location-admin-open" style="display:none;">
   장소 관리
 </button>
-  <button id="player-location-admin-open"
+<button id="player-location-admin-open"
         style="display:none;">
-  위치 관리
+  거점 관리
 </button>
   <button type="button" id="logout-btn" style="display:none;">로그아웃</button>
 </div>
@@ -3444,7 +3485,75 @@ function updateMapPlayerPositions() {
 
 }
 
+// 지도 장소 변경사항 자동 갱신
 
+async function refreshMapLocationData() {
+
+  const requestId = mapLocationRequest;
+
+  const { data, error } = await supabaseClient
+    .from('map_locations')
+    .select('*')
+    .order('name', { ascending: true });
+
+  if (requestId !== mapLocationRequest) return;
+
+  if (error) {
+
+    console.error('지도 갱신 실패:', error);
+
+    return;
+
+  }
+
+
+  const newLocations = data || [];
+
+
+  // 변경사항이 없으면 기존 지도 유지
+
+  if (
+    JSON.stringify(mapLocations) ===
+    JSON.stringify(newLocations)
+  ) return;
+
+
+  const selectedId = selectedMapLocation?.id;
+
+
+  mapLocations = newLocations;
+
+  renderMapLocations();
+
+
+  // 열려 있던 장소 상세창 갱신
+
+  if (selectedId) {
+
+    const updatedLocation = mapLocations.find(
+      location => location.id === selectedId
+    );
+
+    if (updatedLocation) {
+
+      showLocationDetail(updatedLocation);
+
+    } else {
+
+      closeLocationDetail();
+
+    }
+
+  }
+
+
+  renderMapPlayers();
+
+  updateMovementProgress();
+
+  updateLocationActionButtons();
+
+}
 function startMapPlayersRefresh() {
 
   stopMapPlayersRefresh();
@@ -3462,8 +3571,9 @@ function startMapPlayersRefresh() {
       const wasEXPLORING =
         playerMovement?.status === 	'exploring';
 
-      await loadPlayerMovement();
-      await loadMapPlayers();
+     await refreshMapLocationData();
+await loadPlayerMovement();
+await loadMapPlayers();
 
       updateMovementProgress();
       updateLocationActionButtons();
@@ -6513,32 +6623,107 @@ adminOutsideClosePanels.forEach(({ panelId, closeId }) => {
 // 플레이어 위치 관리
 // ========================================
 
+// ========================================
+// 관리자 거점 관리
+// ========================================
+
 const playerLocationAdminOpen =
   document.getElementById('player-location-admin-open');
 
 const playerLocationAdminPanel =
   document.getElementById('player-location-admin-panel');
 
+
+// 기존 위치 관리창 내부를 거점 관리창으로 교체
+
+playerLocationAdminPanel.innerHTML = `
+
+  <div class="player-location-admin-box">
+
+    <div class="player-location-admin-header">
+
+      <div class="widget-title" style="margin:0;">
+        BASE MANAGEMENT / 거점 관리
+      </div>
+
+      <button id="player-location-admin-close">
+        ×
+      </button>
+
+    </div>
+
+
+    <div class="base-current-card">
+
+      <div class="base-current-label">
+        CURRENT BASE
+      </div>
+
+      <div class="base-current-icon">
+        ⬢
+      </div>
+
+      <div id="admin-base-current">
+        불러오는 중...
+      </div>
+
+    </div>
+
+
+    <div class="player-location-admin-field">
+
+      <label>새로운 거점 지정</label>
+
+      <select id="admin-player-location-select">
+        <option value="">장소 선택</option>
+      </select>
+
+    </div>
+
+
+    <div class="base-change-notice">
+
+      ※ 모든 플레이어가 새 거점으로 즉시 이동합니다.<br>
+
+      ※ 진행 중인 조사는 보상 없이 중단됩니다.<br>
+
+      ※ 기존 거점은 일반 조사 장소로 전환됩니다.
+
+    </div>
+
+
+    <button id="admin-player-location-save">
+      거점 변경
+    </button>
+
+    <p id="admin-player-location-message"></p>
+
+  </div>
+
+`;
+
+
 const playerLocationAdminClose =
   document.getElementById('player-location-admin-close');
-
-const adminLocationPlayer =
-  document.getElementById('admin-location-player');
 
 const adminPlayerLocationSelect =
   document.getElementById('admin-player-location-select');
 
-const adminPlayerLocationMessage =
-  document.getElementById('admin-player-location-message');
-
 const adminPlayerLocationSave =
   document.getElementById('admin-player-location-save');
 
-let playerLocationSaving = false;
-let playerLocationRequest = 0;
+const adminPlayerLocationMessage =
+  document.getElementById('admin-player-location-message');
+
+const adminBaseCurrent =
+  document.getElementById('admin-base-current');
 
 
-// 관리창 열기
+let baseSaving = false;
+let baseRequest = 0;
+
+
+// 거점 관리창 열기
 
 playerLocationAdminOpen.onclick = async () => {
 
@@ -6546,29 +6731,18 @@ playerLocationAdminOpen.onclick = async () => {
 
   adminPlayerLocationMessage.textContent = '';
 
-  document.getElementById(
-    'admin-player-current-location'
-  ).textContent = '미지정';
-
-  document.getElementById(
-    'admin-player-movement-status'
-  ).textContent = '-';
-
-  adminPlayerLocationSave.disabled = true;
-
-  await loadLocationPlayers();
-  await loadAssignableLocations();
+  await loadAdminBase();
 
 };
 
 
-// 관리창 닫기
+// 거점 관리창 닫기
 
 playerLocationAdminClose.onclick = () => {
 
-  if (playerLocationSaving) return;
+  if (baseSaving) return;
 
-  playerLocationRequest++;
+  baseRequest++;
 
   playerLocationAdminPanel.style.display = 'none';
 
@@ -6588,72 +6762,56 @@ playerLocationAdminPanel.addEventListener('click', e => {
 });
 
 
-// 승인된 플레이어 목록
+// 현재 거점 및 변경 가능한 장소 불러오기
 
-async function loadLocationPlayers() {
+async function loadAdminBase() {
 
-  adminLocationPlayer.innerHTML =
-    '<option value="">플레이어 선택</option>';
+  const requestId = ++baseRequest;
 
-  const { data, error } = await supabaseClient
-    .from('profiles')
-    .select('user_id, player_name, email')
-    .eq('approved', true)
-    .eq('status', 'approved')
-    .order('player_name');
+  adminBaseCurrent.textContent = '불러오는 중...';
 
-  if (error) {
-
-    adminPlayerLocationMessage.textContent =
-      '플레이어 조회 실패: ' + error.message;
-
-    return;
-
-  }
-
-  (data || []).forEach(player => {
-
-    if (
-      (player.email || '').toLowerCase()
-      === ADMIN_EMAIL
-    ) return;
-
-    const option = document.createElement('option');
-
-    option.value = player.user_id;
-    option.textContent =
-      player.player_name || '이름 미등록';
-
-    adminLocationPlayer.appendChild(option);
-
-  });
-
-}
-
-
-// 지정 가능한 장소 목록
-
-async function loadAssignableLocations() {
+  adminPlayerLocationSave.disabled = true;
 
   adminPlayerLocationSelect.innerHTML =
     '<option value="">장소 선택</option>';
 
+
   const { data, error } = await supabaseClient
     .from('map_locations')
-    .select('id, name, x, y')
+    .select('id, name, x, y, is_base')
     .eq('is_visible', true)
     .order('name');
 
+
+  if (requestId !== baseRequest) return;
+
+
   if (error) {
 
+    adminBaseCurrent.textContent = '조회 실패';
+
     adminPlayerLocationMessage.textContent =
-      '장소 조회 실패: ' + error.message;
+      '거점 조회 실패: ' + error.message;
 
     return;
 
   }
 
-  (data || []).forEach(location => {
+
+  const locations = data || [];
+
+  const currentBase = locations.find(
+    location => location.is_base
+  );
+
+
+  adminBaseCurrent.textContent =
+    currentBase?.name || '미지정';
+
+
+  locations.forEach(location => {
+
+    if (location.is_base) return;
 
     const option = document.createElement('option');
 
@@ -6669,147 +6827,97 @@ async function loadAssignableLocations() {
 }
 
 
-// 플레이어 선택 시 현재 위치 조회
+// 장소 선택 시 버튼 활성화
 
-adminLocationPlayer.onchange = loadSelectedPlayerLocation;
-
-async function loadSelectedPlayerLocation() {
-
-  const requestId = ++playerLocationRequest;
-  const userId = adminLocationPlayer.value;
-
-  const currentDisplay = document.getElementById(
-    'admin-player-current-location'
-  );
-
-  const statusDisplay = document.getElementById(
-    'admin-player-movement-status'
-  );
-
-  currentDisplay.textContent = '미지정';
-  statusDisplay.textContent = '-';
-
-  adminPlayerLocationSave.disabled = true;
-
-  if (!userId) return;
-
-  const { data, error } = await supabaseClient
-    .from('player_movement')
-    .select('current_location_id, status')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (requestId !== playerLocationRequest) return;
-
-  if (error) {
-
-    adminPlayerLocationMessage.textContent =
-      '위치 조회 실패: ' + error.message;
-
-    return;
-
-  }
-
-  if (data?.current_location_id) {
-
-    const { data: location, error: locationError } =
-      await supabaseClient
-        .from('map_locations')
-        .select('name')
-        .eq('id', data.current_location_id)
-        .maybeSingle();
-
-    if (requestId !== playerLocationRequest) return;
-
-    if (locationError) {
-
-      adminPlayerLocationMessage.textContent =
-        '장소 조회 실패: ' + locationError.message;
-
-      return;
-
-    }
-
-    currentDisplay.textContent =
-      location?.name || '알 수 없는 장소';
-
-  }
-
-  statusDisplay.textContent =
-    data?.status === 	'exploring'
-      ? '이동 중'
-      : '대기 중';
+adminPlayerLocationSelect.onchange = () => {
 
   adminPlayerLocationSave.disabled =
-    data?.status === 	'exploring' || playerLocationSaving;
+    baseSaving || !adminPlayerLocationSelect.value;
 
-}
+};
 
 
-// 위치 지정 버튼
+// 거점 변경 실행
 
 adminPlayerLocationSave.onclick = async () => {
 
-  if (playerLocationSaving) return;
+  if (baseSaving) return;
 
-  const userId = adminLocationPlayer.value;
   const locationId = adminPlayerLocationSelect.value;
 
-  if (!userId || !locationId) {
+  if (!locationId) return;
 
-    adminPlayerLocationMessage.textContent =
-      '플레이어와 장소를 선택해 주세요.';
-
-    return;
-
-  }
-
-  const playerName =
-    adminLocationPlayer.selectedOptions[0].textContent;
 
   const locationName =
     adminPlayerLocationSelect.selectedOptions[0].textContent;
 
-  if (!confirm(
-    `${playerName}의 위치를 ${locationName}(으)로 지정할까요?`
-  )) return;
 
-  playerLocationSaving = true;
+  const confirmed = confirm(
+
+    `거점을 ${locationName}(으)로 변경하시겠습니까?\n\n` +
+
+    '모든 플레이어가 새 거점으로 즉시 이동합니다.\n' +
+
+    '진행 중인 조사는 모두 중단됩니다.'
+
+  );
+
+
+  if (!confirmed) return;
+
+
+  baseSaving = true;
 
   adminPlayerLocationSave.disabled = true;
-  adminLocationPlayer.disabled = true;
+
   adminPlayerLocationSelect.disabled = true;
 
-  adminPlayerLocationMessage.textContent = '저장 중...';
+  adminPlayerLocationMessage.textContent = '변경 중...';
+
 
   try {
 
-    const { error } = await supabaseClient.rpc(
-      'admin_set_player_location',
+    const { data, error } = await supabaseClient.rpc(
+
+      'admin_change_base',
+
       {
-        p_user_id: userId,
         p_location_id: locationId
       }
+
     );
+
 
     if (error) throw error;
 
+
+    await loadAdminBase();
+
+    await loadMapLocations();
+
+
     adminPlayerLocationMessage.textContent =
-      '플레이어 위치 지정 완료';
+
+      `${data.new_base} 거점 변경 완료! ` +
+
+      `이동 인원: ${data.moved_players}명`;
+
 
   } catch (error) {
 
     adminPlayerLocationMessage.textContent =
-      error.message;
+
+      '거점 변경 실패: ' + error.message;
+
 
   } finally {
 
-    playerLocationSaving = false;
+    baseSaving = false;
 
-    adminLocationPlayer.disabled = false;
     adminPlayerLocationSelect.disabled = false;
 
-    await loadSelectedPlayerLocation();
+    adminPlayerLocationSave.disabled =
+      !adminPlayerLocationSelect.value;
 
   }
 
