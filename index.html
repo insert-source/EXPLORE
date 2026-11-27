@@ -2526,15 +2526,12 @@ function renderMapPlayers() {
     const locationId = player.current_location_id;
 
     if (!groups.has(locationId)) {
-
       groups.set(locationId, []);
-
     }
 
     groups.get(locationId).push(player);
 
   });
-
 
   groups.forEach((players, locationId) => {
 
@@ -2547,217 +2544,41 @@ function renderMapPlayers() {
     const group = document.createElement('div');
 
     group.className = 'map-player-group';
-
     group.dataset.x = location.x;
     group.dataset.y = location.y;
+    group.dataset.locationId = locationId;
 
+    // 본인과 다른 플레이어 분리
 
- // 본인을 제외한 타인이 3명 이상이면 그룹으로 표시
-
-if (otherPlayers.length >= 3) {
-  group.dataset.locationId = locationId;
-
-  const entry = document.createElement('div');
-
-  entry.className = 'map-player-entry is-group';
-
-  const dot = document.createElement('span');
-
-  dot.className = 'map-player-dot';
-
-  const count = document.createElement('span');
-
-  count.textContent = players.length;
-
-  entry.append(dot, count);
-
-  group.appendChild(entry);
-
-
-  // 캐릭터 목록 생성
-
-  const tooltip = document.createElement('div');
-
-  tooltip.className = 'map-player-tooltip';
-
-  const tooltipBox = document.createElement('div');
-
-  tooltipBox.className = 'map-player-tooltip-box';
-
-  const title = document.createElement('div');
-
-  title.className = 'map-player-tooltip-title';
-
-  title.textContent = `SURVIVORS / ${players.length}`;
-
-  tooltipBox.appendChild(title);
-
-
-  const list = document.createElement('div');
-
-  list.className = 'map-player-tooltip-list';
-
-
-  // 본인을 가장 위에 표시
-
-  const sortedPlayers = [...players].sort((a, b) => {
-
-    const aSelf = a.user_id === mapCurrentUserId;
-
-    const bSelf = b.user_id === mapCurrentUserId;
-
-    if (aSelf !== bSelf) return aSelf ? -1 : 1;
-
-    return (a.player_name || '').localeCompare(
-      b.player_name || '',
-      'ko'
+    const selfPlayer = players.find(
+      player => player.user_id === mapCurrentUserId
     );
 
-  });
+    const otherPlayers = players.filter(
+      player => player.user_id !== mapCurrentUserId
+    );
 
-
-  sortedPlayers.forEach(player => {
-
-    const isSelf =
-      player.user_id === mapCurrentUserId;
-
-    const row = document.createElement('div');
-
-    row.className = 'map-player-tooltip-row';
-
-    row.dataset.userId = player.user_id;
-
-    if (isSelf) {
-
-      row.classList.add('is-self');
-
-    }
-
-    const playerDot = document.createElement('span');
-
-    playerDot.className = 'map-player-dot';
-
-    const playerName = document.createElement('span');
-
-    playerName.textContent = isSelf
-      ? `${player.player_name || '이름 미등록'} (YOU)`
-      : player.player_name || '이름 미등록';
-
-    row.append(playerDot, playerName);
-
-    list.appendChild(row);
-
-  });
-
-
-  tooltipBox.appendChild(list);
-
-  tooltip.appendChild(tooltipBox);
-
-  group.appendChild(tooltip);
-
-
-  // 기존에 열어 둔 목록 유지
-
-  if (openedPlayerGroupId === locationId) {
-
-    group.classList.add('is-open');
-
-  }
-
-
-  // 금색 점 클릭 시 목록 고정 또는 해제
-
-  entry.addEventListener('pointerdown', event => {
-
-    event.stopPropagation();
-
-  });
-
-  entry.addEventListener('click', event => {
-
-    event.stopPropagation();
-
-    const wasOpen =
-      openedPlayerGroupId === locationId;
-
-    closeMapPlayerGroups();
-
-    if (!wasOpen) {
-
-      openedPlayerGroupId = locationId;
-
-      group.classList.add('is-open');
-
-    }
-
-  });
-
-
-  // 목록 조작 시 지도 이동 방지
-
-  tooltip.addEventListener('pointerdown', event => {
-
-    event.stopPropagation();
-
-  });
-
-  tooltip.addEventListener('click', event => {
-
-    event.stopPropagation();
-
-  });
-
-  tooltip.addEventListener('wheel', event => {
-
-    event.stopPropagation();
-
-  });
-
-
-  mapPlayerLayer.appendChild(group);
-
-  return;
-
-}
-
-
-    // 본인을 가장 위에 표시
-
-    players.sort((a, b) => {
-
-      const aSelf = a.user_id === mapCurrentUserId;
-      const bSelf = b.user_id === mapCurrentUserId;
-
-      if (aSelf !== bSelf) return aSelf ? -1 : 1;
-
-      return (a.player_name || '').localeCompare(
+    otherPlayers.sort((a, b) =>
+      (a.player_name || '').localeCompare(
         b.player_name || '',
         'ko'
-      );
+      )
+    );
 
-    });
+    // 개별 플레이어 표시 함수
 
-
-    // 2명 이하이면 개별 표시
-
-    players.forEach(player => {
-
-      const isSelf =
-        player.user_id === mapCurrentUserId;
+    function createPlayerEntry(player, isSelf) {
 
       const entry = document.createElement('div');
 
       entry.className = 'map-player-entry';
+      entry.dataset.userId = player.user_id;
 
       if (isSelf) {
-
         entry.classList.add('is-self');
-
       }
 
       const dot = document.createElement('span');
-
       dot.className = 'map-player-dot';
 
       const name = document.createElement('span');
@@ -2768,9 +2589,134 @@ if (otherPlayers.length >= 3) {
 
       entry.append(dot, name);
 
+      return entry;
+
+    }
+
+    // 본인은 항상 독립적으로 표시
+
+    if (selfPlayer) {
+
+      group.appendChild(
+        createPlayerEntry(selfPlayer, true)
+      );
+
+    }
+
+    // 다른 플레이어가 3명 이상인 경우
+
+    if (otherPlayers.length >= 3) {
+
+      const entry = document.createElement('div');
+
+      entry.className = 'map-player-entry is-group';
+
+      const dot = document.createElement('span');
+      dot.className = 'map-player-dot';
+
+      const count = document.createElement('span');
+      count.textContent = otherPlayers.length;
+
+      entry.append(dot, count);
       group.appendChild(entry);
 
-    });
+      // 캐릭터 목록
+
+      const tooltip = document.createElement('div');
+      tooltip.className = 'map-player-tooltip';
+
+      const tooltipBox = document.createElement('div');
+      tooltipBox.className = 'map-player-tooltip-box';
+
+      const title = document.createElement('div');
+      title.className = 'map-player-tooltip-title';
+      title.textContent =
+        `SURVIVORS / ${otherPlayers.length}`;
+
+      const list = document.createElement('div');
+      list.className = 'map-player-tooltip-list';
+
+      otherPlayers.forEach(player => {
+
+        const row = document.createElement('div');
+
+        row.className = 'map-player-tooltip-row';
+        row.dataset.userId = player.user_id;
+
+        const playerDot = document.createElement('span');
+        playerDot.className = 'map-player-dot';
+
+        const playerName = document.createElement('span');
+
+        playerName.textContent =
+          player.player_name || '이름 미등록';
+
+        row.append(playerDot, playerName);
+        list.appendChild(row);
+
+      });
+
+      tooltipBox.append(title, list);
+      tooltip.appendChild(tooltipBox);
+      group.appendChild(tooltip);
+
+      // 열려 있던 목록 유지
+
+      if (openedPlayerGroupId === locationId) {
+        group.classList.add('is-open');
+      }
+
+      entry.addEventListener('pointerdown', event => {
+        event.stopPropagation();
+      });
+
+      entry.addEventListener('click', event => {
+
+        event.stopPropagation();
+
+        const wasOpen =
+          openedPlayerGroupId === locationId;
+
+        closeMapPlayerGroups();
+
+        if (!wasOpen) {
+
+          openedPlayerGroupId = locationId;
+          group.classList.add('is-open');
+
+        }
+
+      });
+
+      tooltip.addEventListener('pointerdown', event => {
+        event.stopPropagation();
+      });
+
+      tooltip.addEventListener('click', event => {
+        event.stopPropagation();
+      });
+
+      tooltip.addEventListener('wheel', event => {
+        event.stopPropagation();
+      });
+
+    } else {
+
+      // 다른 플레이어가 2명 이하인 경우
+
+      if (openedPlayerGroupId === locationId) {
+        openedPlayerGroupId = null;
+      }
+
+      otherPlayers.forEach(player => {
+
+        group.appendChild(
+          createPlayerEntry(player, false)
+        );
+
+      });
+
+    }
 
     mapPlayerLayer.appendChild(group);
 
@@ -2779,7 +2725,6 @@ if (otherPlayers.length >= 3) {
   updateMapPlayerPositions();
 
 }
-
 
 // 지도 좌표에 맞춰 위치 갱신
 
