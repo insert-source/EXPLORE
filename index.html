@@ -2935,6 +2935,143 @@ label[for="admin-location-travel"] {
   font-weight: bold;
   line-height: 1.8;
 }
+  /* 회원가입 초기 능력치 UI */
+
+#signup-stat-panel {
+  margin: 18px 0 22px;
+}
+
+
+/* 능력치 배분 현황 */
+
+.signup-point-summary {
+  padding: 14px;
+  margin-bottom: 20px;
+  background: #1b191b;
+  border: 1px solid #49303a;
+  border-radius: 4px;
+}
+
+.signup-point-title {
+  color: #bd6b83;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+}
+
+.signup-point-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #a8bdb0;
+}
+
+#signup-point-remaining {
+  color: #a8bdb0;
+  font-weight: bold;
+}
+
+#signup-point-remaining.is-empty {
+  color: #d88ca3;
+}
+
+
+/* 개별 능력치 영역 */
+
+.signup-stat-card {
+  padding: 13px;
+  margin-bottom: 10px;
+  background: #1b191b;
+  border: 1px solid #49303a;
+  border-radius: 4px;
+}
+
+.signup-stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.signup-stat-name {
+  color: #d6c8ce;
+  font-size: 12px;
+}
+
+.signup-stat-value {
+  color: #789184;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.signup-stat-value.is-low {
+  color: #9b304d;
+}
+
+
+/* 능력치 게이지 */
+
+.signup-stat-track {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  background: #30262b;
+  border-radius: 2px;
+}
+
+.signup-stat-fill {
+  width: 0%;
+  height: 100%;
+  background: #9b304d;
+  transition:
+    width 0.4s ease,
+    background-color 0.4s ease;
+}
+
+
+/* 능력치 조절 버튼 */
+
+.signup-stat-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.signup-stat-buttons button {
+  width: 48px;
+  height: 30px;
+  padding: 0;
+  background: #292126;
+  color: #d6c8ce;
+  border: 1px solid #653448;
+  border-radius: 3px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.signup-stat-buttons button:hover:not(:disabled) {
+  background: #713348;
+}
+
+.signup-stat-buttons button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+
+/* 능력치 배분 안내 */
+
+.signup-stat-notice {
+  color: #bd6b83;
+  font-size: 11px;
+  line-height: 1.8;
+  margin: 12px 0 20px;
+}
 </style>
 </head>
 
@@ -3381,37 +3518,171 @@ label[for="admin-location-travel"] {
   </h3>
      
 
-     <div class="stat-control">
-  <label>체력</label>
-  <div class="stat-adjust">
-    <button type="button" onclick="changeSignupStat('health', -5)">−</button>
-    <span id="signup-health-value">0</span>
-    <button type="button" onclick="changeSignupStat('health', 5)">+</button>
+   <!-- 회원가입 초기 능력치 설정 -->
+
+<div id="signup-stat-panel">
+
+  <!-- 능력치 배분 현황 -->
+
+  <div class="signup-point-summary">
+
+    <div class="signup-point-title">
+      AVAILABLE POINTS
+    </div>
+
+    <div class="signup-point-row">
+
+      <span>
+        배분
+        <span id="signup-point-used">0</span>
+        / 100
+      </span>
+
+      <span>
+        잔여
+        <span id="signup-point-remaining">100</span>
+      </span>
+
+    </div>
+
   </div>
-</div>
 
-<div class="stat-control">
-  <label>정신력</label>
-  <div class="stat-adjust">
-    <button type="button" onclick="changeSignupStat('mental', -5)">−</button>
-    <span id="signup-mental-value">0</span>
-    <button type="button" onclick="changeSignupStat('mental', 5)">+</button>
+
+  <!-- 체력 -->
+
+  <div class="signup-stat-card">
+
+    <div class="signup-stat-header">
+
+      <span class="signup-stat-name">
+        체력
+      </span>
+
+      <span class="signup-stat-value is-low"
+            id="signup-health-display">
+        <span id="signup-health-value">0</span> / 100
+      </span>
+
+    </div>
+
+    <div class="signup-stat-track">
+      <div class="signup-stat-fill"
+           id="signup-health-fill"></div>
+    </div>
+
+    <div class="signup-stat-buttons">
+
+      <button type="button"
+              id="signup-health-minus"
+              onclick="changeSignupStat('health', -5)"
+              disabled>
+        −
+      </button>
+
+      <button type="button"
+              id="signup-health-plus"
+              onclick="changeSignupStat('health', 5)">
+        +
+      </button>
+
+    </div>
+
   </div>
-</div>
 
-<div class="stat-control">
-  <label>허기</label>
-  <div class="stat-adjust">
-    <button type="button" onclick="changeSignupStat('hunger', -5)">−</button>
-    <span id="signup-hunger-value">0</span>
-    <button type="button" onclick="changeSignupStat('hunger', 5)">+</button>
+
+  <!-- 정신력 -->
+
+  <div class="signup-stat-card">
+
+    <div class="signup-stat-header">
+
+      <span class="signup-stat-name">
+        정신력
+      </span>
+
+      <span class="signup-stat-value is-low"
+            id="signup-mental-display">
+        <span id="signup-mental-value">0</span> / 100
+      </span>
+
+    </div>
+
+    <div class="signup-stat-track">
+      <div class="signup-stat-fill"
+           id="signup-mental-fill"></div>
+    </div>
+
+    <div class="signup-stat-buttons">
+
+      <button type="button"
+              id="signup-mental-minus"
+              onclick="changeSignupStat('mental', -5)"
+              disabled>
+        −
+      </button>
+
+      <button type="button"
+              id="signup-mental-plus"
+              onclick="changeSignupStat('mental', 5)">
+        +
+      </button>
+
+    </div>
+
   </div>
+
+
+  <!-- 허기 -->
+
+  <div class="signup-stat-card">
+
+    <div class="signup-stat-header">
+
+      <span class="signup-stat-name">
+        허기
+      </span>
+
+      <span class="signup-stat-value is-low"
+            id="signup-hunger-display">
+        <span id="signup-hunger-value">0</span> / 100
+      </span>
+
+    </div>
+
+    <div class="signup-stat-track">
+      <div class="signup-stat-fill"
+           id="signup-hunger-fill"></div>
+    </div>
+
+    <div class="signup-stat-buttons">
+
+      <button type="button"
+              id="signup-hunger-minus"
+              onclick="changeSignupStat('hunger', -5)"
+              disabled>
+        −
+      </button>
+
+      <button type="button"
+              id="signup-hunger-plus"
+              onclick="changeSignupStat('hunger', 5)">
+        +
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <!-- 능력치 배분 안내 -->
+
+  <p class="signup-stat-notice">
+    ※ 각 수치는 5단위로 조절됩니다.<br>
+    ※ 세 능력치의 합계는 100을 초과할 수 없습니다.<br>
+    ※ 체력 또는 허기가 0일 경우 사망 처리됩니다.
+  </p>
+
 </div>
-
-<p style="font-size:11px;color:#bd6b83;">
-  ※ 각 수치는 5단위로 조절되며 세 수치의 합계는 100을 초과할 수 없습니다.
-</p>
-
 
       <label>초기 보유 아이템 1</label>
       <input id="player-item1" type="text"
@@ -9610,27 +9881,137 @@ let authMode = 'login';
   hunger: 0
 };
 
-function changeSignupStat(type, amount) {
-  const current = signupStats[type];
-  const next = current + amount;
+// 회원가입 능력치 UI 갱신
 
-  if (next < 0 || next > 100) return;
+function renderSignupStats() {
 
   const total =
     signupStats.health +
     signupStats.mental +
     signupStats.hunger;
 
+  const remaining = 100 - total;
+
+
+  // 배분 포인트 표시
+
+  document.getElementById(
+    'signup-point-used'
+  ).textContent = total;
+
+
+  const remainingDisplay = document.getElementById(
+    'signup-point-remaining'
+  );
+
+  remainingDisplay.textContent = remaining;
+
+  remainingDisplay.classList.toggle(
+    'is-empty',
+    remaining === 0
+  );
+
+
+  // 개별 능력치 갱신
+
+  ['health', 'mental', 'hunger'].forEach(type => {
+
+    const value = signupStats[type];
+
+    const isLow = value <= 5;
+
+
+    // 능력치 숫자
+
+    document.getElementById(
+      `signup-${type}-value`
+    ).textContent = value;
+
+
+    // 능력치 숫자 색상
+
+    document.getElementById(
+      `signup-${type}-display`
+    ).classList.toggle(
+      'is-low',
+      isLow
+    );
+
+
+    // 능력치 게이지
+
+    const fill = document.getElementById(
+      `signup-${type}-fill`
+    );
+
+    fill.style.width = `${value}%`;
+
+    fill.style.backgroundColor = isLow
+      ? '#9b304d'
+      : '#789184';
+
+
+    // 감소 버튼
+
+    document.getElementById(
+      `signup-${type}-minus`
+    ).disabled = value < 5;
+
+
+    // 증가 버튼
+
+    document.getElementById(
+      `signup-${type}-plus`
+    ).disabled =
+      value + 5 > 100 ||
+      remaining < 5;
+
+  });
+
+}
+
+
+// 회원가입 능력치 조절
+
+function changeSignupStat(type, amount) {
+
+  if (authSubmit.disabled) return;
+
+  if (!['health', 'mental', 'hunger'].includes(type)) return;
+
+  if (amount !== 5 && amount !== -5) return;
+
+
+  const current = signupStats[type];
+
+  const next = current + amount;
+
+
+  if (next < 0 || next > 100) return;
+
+
+  const total =
+    signupStats.health +
+    signupStats.mental +
+    signupStats.hunger;
+
+
   if (amount > 0 && total + amount > 100) {
-    authMessage.textContent = '세 수치의 합계는 100을 초과할 수 없습니다.';
+
+    authMessage.textContent =
+      '세 수치의 합계는 100을 초과할 수 없습니다.';
+
     return;
+
   }
+
 
   signupStats[type] = next;
 
-  document.getElementById(`signup-${type}-value`).textContent = next;
+  renderSignupStats();
 
   authMessage.textContent = '';
+
 }
 
 const loginOpen = document.getElementById('login-open');
@@ -9680,6 +10061,9 @@ signupOpen.onclick = () => {
   authSwitch.textContent = '로그인으로 돌아가기';
   authMessage.textContent = '';
   signupFields.style.display = 'block';
+
+  renderSignupStats();
+
   authModal.style.display = 'flex';
 };
 
@@ -9718,16 +10102,13 @@ function openAdminCharacterSetup() {
 
   signupFields.style.display = 'block';
 
-  ['health', 'mental', 'hunger'].forEach(type => {
+   ['health', 'mental', 'hunger'].forEach(type => {
 
     signupStats[type] = 0;
 
-    document.getElementById(
-      `signup-${type}-value`
-    ).textContent = '0';
-
   });
 
+  renderSignupStats();
   document.getElementById('player-item1').value = '';
   document.getElementById('player-item2').value = '';
   document.getElementById('player-will').value = '';
