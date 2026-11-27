@@ -3137,6 +3137,13 @@ label[for="admin-location-travel"] {
   <span id="user-status" style="font-size:12px;color:#998c92;">GUEST</span>
   <button type="button" id="login-open">로그인</button>
   <button type="button" id="signup-open">회원가입</button>
+  <button
+  type="button"
+  id="player-list-open"
+  style="display:none;"
+>
+  플레이어 목록
+</button>
   <button type="button" id="admin-open" style="display:none;">가입 관리</button>
   <button id="item-admin-open" style="display:none;">
   아이템 관리
@@ -3155,6 +3162,39 @@ label[for="admin-location-travel"] {
   <button type="button" id="logout-btn" style="display:none;">로그아웃</button>
 </div>
 </header>
+  <!-- 전체 플레이어 목록 팝업 -->
+
+<div id="player-list-modal" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  background:rgba(0,0,0,0.75);
+  align-items:center;
+  justify-content:center;
+">
+
+  <div class="player-location-admin-box">
+
+    <div class="player-location-admin-header">
+
+      <div class="widget-title">
+        PLAYER LIST
+      </div>
+
+      <button type="button" id="player-list-close">
+        ×
+      </button>
+
+    </div>
+
+    <div id="player-list-content">
+      불러오는 중...
+    </div>
+
+  </div>
+
+</div>
   <!-- 아이템 선물 팝업 -->
 
 <div id="gift-modal">
@@ -14814,8 +14854,193 @@ playerNameInput.addEventListener('keydown', event => {
   }
 
 });
-async function checkPlayerAccess() {
+  setInterval(() => {
 
+  const modal = document.getElementById(
+    'player-list-modal'
+  );
+
+  if (modal.style.display === 'flex') {
+    loadPlayerList();
+  }
+
+}, 5000);
+  async function loadPlayerList() {
+
+  const content = document.getElementById(
+    'player-list-content'
+  );
+
+ 
+
+  const { data, error } = await supabaseClient
+    .rpc('get_player_list');
+
+  if (error) {
+    content.textContent = error.message;
+    return;
+  }
+
+  content.replaceChildren();
+
+  if (!data?.length) {
+    content.textContent = '등록된 플레이어가 없습니다.';
+    return;
+  }
+
+  data.forEach(player => {
+
+    const button = document.createElement('button');
+
+    button.type = 'button';
+
+    button.style.cssText = `
+      display:block;
+      width:100%;
+      text-align:left;
+      padding:12px;
+      margin-bottom:8px;
+      background:#171416;
+      border:1px solid #49303a;
+      white-space:pre-wrap;
+      line-height:1.8;
+    `;
+
+    const name = document.createElement('div');
+
+    name.style.fontWeight = 'bold';
+    name.style.fontSize = '14px';
+    name.style.color = player.is_dead
+      ? '#998c92'
+      : '#e8e1e4';
+
+    name.textContent = player.player_name
+      + (player.is_dead ? ' [사망]' : '');
+
+    const location = document.createElement('div');
+
+    location.style.fontSize = '11px';
+    location.style.color = player.same_location
+      ? '#9dc5ae'
+      : '#998c92';
+
+    location.textContent = player.location_name;
+
+    button.append(name, location);
+
+    if (player.same_location) {
+
+      const stats = document.createElement('div');
+
+      stats.style.fontSize = '12px';
+      stats.style.color = '#d88ca3';
+
+      stats.textContent =
+        `체력 ${player.health} / 정신력 ${player.mental} / 허기 ${player.hunger}`;
+
+      button.appendChild(stats);
+
+    }
+button.onclick = async () => {
+
+  if (player.user_id === mapCurrentUserId) {
+    alert('본인 캐릭터입니다.');
+    return;
+  }
+
+  if (!player.current_location_id) {
+    alert('확인할 수 없는 위치입니다.');
+    return;
+  }
+
+  await refreshMapLocationData();
+  await loadMapPlayers();
+
+  const target = mapPlayers.find(
+    p => p.user_id === player.user_id
+  );
+
+  const location = mapLocations.find(
+    l => l.id === (
+      player.is_dead
+        ? player.current_location_id
+        : target?.current_location_id
+    )
+  );
+
+  if (!location) {
+    alert('현재 위치를 확인할 수 없습니다.');
+    await loadPlayerList();
+    return;
+  }
+
+  document.getElementById(
+    'player-list-modal'
+  ).style.display = 'none';
+
+  closeLocationDetail();
+  closeSurvivorDetail();
+  closeDeadDetail();
+
+  const size = 50 * scale;
+
+  x = map.clientWidth / 2 - Number(location.x) * size;
+  y = map.clientHeight / 2 - Number(location.y) * size;
+
+  updateMap();
+
+  if (player.is_dead) {
+
+    await openDeadDetail(player.user_id);
+
+  } else {
+
+    showSurvivorDetail(player.user_id);
+
+  }
+
+};
+    content.appendChild(button);
+
+  });
+
+}
+
+
+document.getElementById(
+  'player-list-open'
+).addEventListener('click', async () => {
+
+  document.getElementById(
+    'player-list-modal'
+  ).style.display = 'flex';
+
+  await loadPlayerList();
+
+});
+
+
+document.getElementById(
+  'player-list-close'
+).addEventListener('click', () => {
+
+  document.getElementById(
+    'player-list-modal'
+  ).style.display = 'none';
+
+});
+async function checkPlayerAccess() {
+  document.getElementById(
+    'player-list-open'
+  ).style.display = 'none';
+
+  document.getElementById(
+    'player-list-modal'
+  ).style.display = 'none';
+
+  document.getElementById(
+    'player-list-content'
+  ).replaceChildren();
   document.getElementById('will-message').textContent = '';
 
   resetRadio();
@@ -14942,6 +15167,9 @@ if (isAdmin) {
   }
 
   dashboard.style.display = 'grid';
+    document.getElementById(
+    'player-list-open'
+  ).style.display = 'inline-block';
   pendingScreen.style.display = 'none';
   adminPanel.style.display = 'none';
 adminOpen.style.display = 'inline-block';
@@ -14996,6 +15224,9 @@ if (
   profile.signup_completed === true
 ) {
   dashboard.style.display = 'grid';
+    document.getElementById(
+    'player-list-open'
+  ).style.display = 'inline-block';
   pendingScreen.style.display = 'none';
 
   renderPlayerProfile(profile);
