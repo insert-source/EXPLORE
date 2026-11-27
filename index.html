@@ -796,14 +796,13 @@ authSubmit.onclick = async () => {
   try {
     let result;
 
-    if (authMode === 'signup') {
-      const playerName = document.getElementById('player-name').value.trim();
-      const health = Number(document.getElementById('player-health').value);
-      const mental = Number(document.getElementById('player-mental').value);
-      const hunger = Number(document.getElementById('player-hunger').value);
-      const item1 = document.getElementById('player-item1').value.trim();
-      const item2 = document.getElementById('player-item2').value.trim();
-      const will = document.getElementById('player-will').value.trim();
+  if (authMode === 'signup') {
+  const health = signupStats.health;
+  const mental = signupStats.mental;
+  const hunger = signupStats.hunger;
+  const item1 = document.getElementById('player-item1').value.trim();
+  const item2 = document.getElementById('player-item2').value.trim();
+  const will = document.getElementById('player-will').value.trim();
 
       if (!playerName) {
         authMessage.textContent = '플레이어 이름을 입력해 줘.';
