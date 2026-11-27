@@ -6899,19 +6899,18 @@ result = await supabaseClient.auth.signInWithPassword({
 
 if (result.error) throw result.error;
 
-      const { error: saveError } = await supabaseClient.rpc(
-        'save_signup_profile',
-        {
-  p_player_name: loginName,
-p_health: health,
-p_mental: mental,
-p_hunger: hunger,
-p_item1: item1,
-p_item2: item2,
-p_will: will
-        }
-      );
-
+  const { error: profileError } = await supabaseClient.rpc(
+  'save_signup_profile',
+  {
+    p_player_name: playerName,
+    p_health: health,
+    p_mental: mental,
+    p_hunger: hunger,
+    p_item1: item1,
+    p_item2: item2,
+    p_will: will
+  }
+);
       if (saveError) {
         if (
           saveError.message.includes('profiles_player_name_unique') ||
