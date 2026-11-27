@@ -6801,18 +6801,23 @@ updatePlayerMapPosition();
 mapLocationRequest++;
 
 stopMapPlayersRefresh();
-  if (!user) {
-    document.getElementById('user-status').textContent = 'GUEST';
-    loginOpen.style.display = 'inline-block';
-    signupOpen.style.display = 'inline-block';
-    logoutBtn.style.display = 'none';
+ if (!user) {
+  document.getElementById('user-status').textContent = 'GUEST';
+  loginOpen.style.display = 'inline-block';
+  signupOpen.style.display = 'inline-block';
+  logoutBtn.style.display = 'none';
 
-    dashboard.style.display = 'none';
-    adminPanel.style.display = 'none';
-    pendingScreen.style.display = 'none';
-    return;
+  dashboard.style.display = 'none';
+  adminPanel.style.display = 'none';
+  pendingScreen.style.display = 'none';
+
+  if (authModal.style.display !== 'flex') {
+    loginOpen.click();
   }
 
+  return;
+}
+authModal.style.display = 'none';
  document.getElementById('user-status').textContent = 'LOADING...';
   loginOpen.style.display = 'none';
   signupOpen.style.display = 'none';
