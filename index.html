@@ -1511,6 +1511,35 @@ label[for="admin-location-travel"] {
   font-size: 11px;
   line-height: 1.6;
 }
+  /* 장소별 조사 능력치 감소 설정 */
+
+.location-loss-settings {
+  padding: 14px;
+  margin: 15px 0;
+  background: #171416;
+  border: 1px solid #49303a;
+  border-radius: 5px;
+}
+
+.location-loss-title {
+  color: #d88ca3;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  margin: 12px 0 10px;
+}
+
+.location-loss-settings input {
+  text-align: center;
+}
+
+.location-loss-notice {
+  padding-top: 10px;
+  border-top: 1px solid #35282e;
+  color: #998c92;
+  font-size: 11px;
+  line-height: 1.8;
+}
 </style>
 </head>
 
@@ -2422,7 +2451,90 @@ label[for="admin-location-travel"] {
 
       </div>
 
+<!-- 조사 능력치 감소 설정 -->
 
+<div class="location-loss-settings">
+
+  <div class="widget-title">
+    EXPLORATION PENALTY
+  </div>
+
+  <div class="location-loss-title">
+    HEALTH / 체력
+  </div>
+
+  <div class="admin-location-grid">
+
+    <div class="admin-location-field">
+
+      <label>감소 확률 (%)</label>
+
+      <input type="number"
+             id="admin-location-health-chance"
+             min="0"
+             max="100"
+             step="1"
+             value="0">
+
+    </div>
+
+    <div class="admin-location-field">
+
+      <label>최대 감소치</label>
+
+      <input type="number"
+             id="admin-location-health-max"
+             min="0"
+             max="100"
+             step="1"
+             value="0">
+
+    </div>
+
+  </div>
+
+  <div class="location-loss-title">
+    MENTAL / 정신력
+  </div>
+
+  <div class="admin-location-grid">
+
+    <div class="admin-location-field">
+
+      <label>감소 확률 (%)</label>
+
+      <input type="number"
+             id="admin-location-mental-chance"
+             min="0"
+             max="100"
+             step="1"
+             value="0">
+
+    </div>
+
+    <div class="admin-location-field">
+
+      <label>최대 감소치</label>
+
+      <input type="number"
+             id="admin-location-mental-max"
+             min="0"
+             max="100"
+             step="1"
+             value="0">
+
+    </div>
+
+  </div>
+
+  <div class="location-loss-notice">
+    체력과 정신력은 각각 독립적으로 추첨됩니다.<br>
+    감소 확률에 당첨되면 1부터 최대 감소치 사이의
+    정수만큼 감소합니다.<br>
+    확률 또는 최대 감소치가 0이면 감소하지 않습니다.
+  </div>
+
+</div>
       <!-- 공개 여부 -->
 
       <label style="
@@ -6643,6 +6755,22 @@ function resetLocationEditor() {
   editingLocationId = null;
 
   document.getElementById(
+    'admin-location-health-chance'
+  ).value = 0;
+
+  document.getElementById(
+    'admin-location-health-max'
+  ).value = 0;
+
+  document.getElementById(
+    'admin-location-mental-chance'
+  ).value = 0;
+
+  document.getElementById(
+    'admin-location-mental-max'
+  ).value = 0;
+
+  document.getElementById(
     'admin-location-editor-title'
   ).textContent = 'LOCATION EDITOR / 새 장소';
 
@@ -6687,6 +6815,22 @@ function resetLocationEditor() {
 function editAdminLocation(location) {
 
   editingLocationId = location.id;
+
+  document.getElementById(
+    'admin-location-health-chance'
+  ).value = location.health_loss_chance ?? 0;
+
+  document.getElementById(
+    'admin-location-health-max'
+  ).value = location.health_loss_max ?? 0;
+
+  document.getElementById(
+    'admin-location-mental-chance'
+  ).value = location.mental_loss_chance ?? 0;
+
+  document.getElementById(
+    'admin-location-mental-max'
+  ).value = location.mental_loss_max ?? 0;
 
   document.getElementById(
     'admin-location-editor-title'
@@ -6769,19 +6913,23 @@ async function saveAdminLocation() {
 
   if (locationSaving) return;
 
-  const numberIds = [
-    'admin-location-x',
-    'admin-location-y',
-    'admin-location-travel',
-    'admin-location-explore'
-  ];
+const numberIds = [
+  'admin-location-x',
+  'admin-location-y',
+  'admin-location-travel',
+  'admin-location-explore',
+  'admin-location-health-chance',
+  'admin-location-health-max',
+  'admin-location-mental-chance',
+  'admin-location-mental-max'
+];
 
   if (numberIds.some(id =>
     document.getElementById(id).value.trim() === ''
   )) {
 
     adminLocationMessage.textContent =
-      '좌표와 소요 시간을 입력해 주세요.';
+   '좌표, 소요 시간, 능력치 감소 설정을 모두 입력해 주세요.';
 
     return;
 
@@ -6813,13 +6961,29 @@ async function saveAdminLocation() {
       'admin-location-explore'
     ).value),
 
-    danger_level: Number(document.getElementById(
-      'admin-location-danger'
-    ).value),
+   danger_level: Number(document.getElementById(
+  'admin-location-danger'
+).value),
 
-    is_visible: document.getElementById(
-      'admin-location-visible'
-    ).checked
+health_loss_chance: Number(document.getElementById(
+  'admin-location-health-chance'
+).value),
+
+health_loss_max: Number(document.getElementById(
+  'admin-location-health-max'
+).value),
+
+mental_loss_chance: Number(document.getElementById(
+  'admin-location-mental-chance'
+).value),
+
+mental_loss_max: Number(document.getElementById(
+  'admin-location-mental-max'
+).value),
+
+is_visible: document.getElementById(
+  'admin-location-visible'
+).checked
 
   };
 
@@ -6860,7 +7024,29 @@ async function saveAdminLocation() {
     return;
 
   }
+// 조사 능력치 감소 설정 검사
 
+if (![
+
+  location.health_loss_chance,
+  location.health_loss_max,
+  location.mental_loss_chance,
+  location.mental_loss_max
+
+].every(value =>
+
+  Number.isInteger(value) &&
+  value >= 0 &&
+  value <= 100
+
+)) {
+
+  adminLocationMessage.textContent =
+    '감소 확률과 최대 감소치는 0~100 사이의 정수여야 합니다.';
+
+  return;
+
+}
   if (![0, 1, 2, 3].includes(location.danger_level)) {
 
     adminLocationMessage.textContent =
