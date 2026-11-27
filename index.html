@@ -62,7 +62,26 @@ input {
   border-radius: 4px;
   min-width: 0;
 }
+/* 관리자 아이템 설명 입력란 */
 
+#admin-item-description {
+  background: #171315;
+  border: 1px solid #50313c;
+  color: white;
+  padding: 9px;
+  border-radius: 4px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: inherit;
+  resize: vertical;
+}
+
+#admin-item-description:focus {
+  outline: none;
+  border-color: #d88ca3;
+}
 .dashboard {
   display: grid;
   grid-template-columns: 250px minmax(0, 1fr);
