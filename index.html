@@ -2147,6 +2147,66 @@ label[for="admin-location-travel"] {
   opacity: 0.4;
   cursor: not-allowed;
 }
+  /* 관리자 캐릭터 관리 */
+
+#character-admin-panel {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.75);
+  align-items: center;
+  justify-content: center;
+}
+
+#character-admin-close {
+  background: transparent;
+  border: none;
+  color: #bcaab2;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+#character-admin-panel input,
+#character-admin-panel textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  background: #141114;
+  color: #e4dce0;
+  border: 1px solid #49303a;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+#character-admin-panel textarea {
+  min-height: 150px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+#character-admin-save {
+  width: 100%;
+  padding: 10px;
+  background: #789184;
+  color: #141114;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#character-admin-save:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+#character-admin-message {
+  font-size: 11px;
+  color: #bcaab2;
+  margin-bottom: 0;
+}
 </style>
 </head>
 
@@ -3415,7 +3475,55 @@ label[for="admin-location-travel"] {
 
 <!-- 관리자 장소 관리 끝 -->
   <!-- 플레이어 위치 관리창 -->
+<!-- 관리자 캐릭터 관리 -->
 
+<div id="character-admin-panel">
+
+  <div class="player-location-admin-box">
+
+    <div class="player-location-admin-header">
+
+      <div class="widget-title" style="margin:0;">
+        CHARACTER MANAGEMENT / 캐릭터 관리
+      </div>
+
+      <button id="character-admin-close">×</button>
+
+    </div>
+
+    <div class="player-location-admin-field">
+
+      <label>캐릭터 이름</label>
+
+      <input
+        type="text"
+        id="character-admin-name"
+        placeholder="캐릭터 이름"
+      >
+
+    </div>
+
+    <div class="player-location-admin-field">
+
+      <label>유서</label>
+
+      <textarea
+        id="character-admin-will"
+        placeholder="유서를 작성해 주세요."
+      ></textarea>
+
+    </div>
+
+    <button id="character-admin-save">
+      변경 사항 저장
+    </button>
+
+    <p id="character-admin-message"></p>
+
+  </div>
+
+</div>
+  
 <div id="player-location-admin-panel">
 
   <div class="player-location-admin-box">
@@ -10440,7 +10548,229 @@ adminPlayerLocationSave.onclick = async () => {
   }
 
 };
+  // ========================================
+// 관리자 캐릭터 관리
+// ========================================
+
+const characterAdminOpen =
+  document.getElementById('character-admin-open');
+
+const characterAdminPanel =
+  document.getElementById('character-admin-panel');
+
+const characterAdminClose =
+  document.getElementById('character-admin-close');
+
+const characterAdminName =
+  document.getElementById('character-admin-name');
+
+const characterAdminWill =
+  document.getElementById('character-admin-will');
+
+const characterAdminSave =
+  document.getElementById('character-admin-save');
+
+const characterAdminMessage =
+  document.getElementById('character-admin-message');
+
+let characterAdminSaving = false;
+let characterAdminRequest = 0;
+
+
+// 캐릭터 관리창 닫기
+
+function closeCharacterAdmin(force = false) {
+
+  if (characterAdminSaving && !force) return;
+
+  characterAdminRequest++;
+
+  characterAdminPanel.style.display = 'none';
+
+  characterAdminName.value = '';
+  characterAdminWill.value = '';
+  characterAdminMessage.textContent = '';
+
+}
+
+
+// 캐릭터 관리창 열기
+
+characterAdminOpen.onclick = async () => {
+
+  if (characterAdminSaving) return;
+
+  const requestId = ++characterAdminRequest;
+
+  characterAdminPanel.style.display = 'flex';
+
+  characterAdminName.value = '';
+  characterAdminWill.value = '';
+
+  characterAdminSave.disabled = true;
+
+  characterAdminMessage.textContent =
+    '캐릭터 정보를 불러오는 중...';
+
+  try {
+
+    const { data: sessionData } =
+      await supabaseClient.auth.getSession();
+
+    const user = sessionData.session?.user;
+
+    if (
+      !user ||
+      (user.email || '').toLowerCase() !== ADMIN_EMAIL
+    ) {
+      throw new Error('관리자 권한이 필요합니다.');
+    }
+
+    const { data, error } = await supabaseClient
+      .from('profiles')
+      .select('player_name, will')
+      .eq('user_id', user.id)
+      .single();
+
+    if (requestId !== characterAdminRequest) return;
+
+    if (error) throw error;
+
+    characterAdminName.value =
+      data.player_name || '';
+
+    characterAdminWill.value =
+      data.will || '';
+
+    characterAdminMessage.textContent = '';
+
+    characterAdminSave.disabled = false;
+
+  } catch (error) {
+
+    if (requestId !== characterAdminRequest) return;
+
+    characterAdminMessage.textContent =
+      error.message;
+
+  }
+
+};
+
+
+// 캐릭터 정보 저장
+
+characterAdminSave.onclick = async () => {
+
+  if (characterAdminSaving) return;
+
+  const playerName =
+    characterAdminName.value.trim();
+
+  const will =
+    characterAdminWill.value;
+
+  if (!playerName) {
+
+    characterAdminMessage.textContent =
+      '캐릭터 이름을 입력해 주세요.';
+
+    return;
+
+  }
+
+  const requestId = characterAdminRequest;
+
+  characterAdminSaving = true;
+  characterAdminSave.disabled = true;
+  characterAdminName.disabled = true;
+  characterAdminWill.disabled = true;
+
+  characterAdminMessage.textContent =
+    '저장 중...';
+
+  try {
+
+    const { error } = await supabaseClient.rpc(
+      'admin_update_my_character',
+      {
+        p_player_name: playerName,
+        p_will: will
+      }
+    );
+
+    if (error) throw error;
+
+    if (requestId !== characterAdminRequest) return;
+
+    // 대시보드 이름 갱신
+
+    document.getElementById(
+      'display-player-name'
+    ).textContent = playerName;
+
+    // 상단 이름 갱신
+
+    document.getElementById(
+      'user-status'
+    ).textContent = `${playerName} [ADMIN]`;
+
+    // 유서 갱신
+
+    document.getElementById(
+      'player-will-display'
+    ).value = will;
+
+    // 지도 캐릭터 정보 갱신
+
+    await loadMapPlayers();
+
+    if (requestId !== characterAdminRequest) return;
+
+    characterAdminMessage.textContent =
+      '변경 사항이 저장되었습니다.';
+
+  } catch (error) {
+
+    if (requestId !== characterAdminRequest) return;
+
+    characterAdminMessage.textContent =
+      error.code === '23505'
+        ? '이미 사용 중인 캐릭터 이름입니다.'
+        : error.message;
+
+  } finally {
+
+    characterAdminSaving = false;
+
+    characterAdminSave.disabled = false;
+    characterAdminName.disabled = false;
+    characterAdminWill.disabled = false;
+
+  }
+
+};
+
+
+// 닫기 버튼
+
+characterAdminClose.onclick = () => {
+  closeCharacterAdmin();
+};
+
+
+// 팝업 바깥 클릭 시 닫기
+
+characterAdminPanel.addEventListener('click', event => {
+
+  if (event.target === characterAdminPanel) {
+    closeCharacterAdmin();
+  }
+
+});
 async function checkPlayerAccess() {
+
+  closeCharacterAdmin(true);
 
   closeGiftModal(true);
 
