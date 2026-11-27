@@ -922,6 +922,27 @@ function renderPlayerProfile(profile) {
     inventory.appendChild(item);
   });
 }
+  // 유서 저장
+document.getElementById('save-will-btn').addEventListener('click', async () => {
+  const willText = document.getElementById('player-will-display').value;
+  const message = document.getElementById('will-message');
+  const button = document.getElementById('save-will-btn');
+
+  button.disabled = true;
+  message.textContent = '저장 중...';
+
+  const { error } = await supabaseClient.rpc('save_my_will', {
+    p_will: willText
+  });
+
+  if (error) {
+    message.textContent = '저장 실패: ' + error.message;
+  } else {
+    message.textContent = '유서가 저장되었습니다.';
+  }
+
+  button.disabled = false;
+});
 // 승인 상태 확인
 async function checkPlayerAccess() {
   const { data: sessionData } =
