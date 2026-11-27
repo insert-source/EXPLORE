@@ -6665,15 +6665,38 @@ function updateMapPlayerPositions() {
 }
 
 // 지도 장소 변경사항 자동 갱신
+async function fetchMapLocations() {
 
+  const { data: sessionData } =
+    await supabaseClient.auth.getSession();
+
+  const user = sessionData.session?.user;
+
+  if (!user) {
+    return {
+      data: [],
+      error: null
+    };
+  }
+
+  if (user.email?.toLowerCase() === ADMIN_EMAIL) {
+
+    return await supabaseClient
+      .from('map_locations')
+      .select('*')
+      .order('name', { ascending: true });
+
+  }
+
+  return await supabaseClient
+    .rpc('get_player_map_locations');
+
+}
 async function refreshMapLocationData() {
 
   const requestId = mapLocationRequest;
 
-  const { data, error } = await supabaseClient
-    .from('map_locations')
-    .select('*')
-    .order('name', { ascending: true });
+const { data, error } = await fetchMapLocations();
 
   if (requestId !== mapLocationRequest) return;
 
@@ -9503,7 +9526,10 @@ function updateLocationActionButtons() {
   );
 
   if (!location) return;
-
+if (location.can_explore === false) {
+  message.textContent = '';
+  return;
+}
 
   // 사망자 조사 제한
 
@@ -9654,10 +9680,7 @@ async function loadMapLocations() {
 
   if (!user || requestId !== mapLocationRequest) return;
 
-  const { data, error } = await supabaseClient
-    .from("map_locations")
-    .select("*")
-    .order("name", { ascending: true });
+ const { data, error } = await fetchMapLocations();
 
   if (requestId !== mapLocationRequest) return;
 
@@ -9825,7 +9848,28 @@ function showLocationDetail(location) {
   ).textContent =
     mentalLossMax > 0 ? `-${mentalLossMax}` : '0';
 
+const isLocked = location.can_explore === false;
 
+document.getElementById(
+  'location-detail-coordinates'
+).style.display = isLocked ? 'none' : '';
+
+['danger', 'travel'].forEach(key => {
+  document.getElementById(
+    `location-detail-${key}`
+  ).closest('.location-detail-row').style.display =
+    isLocked ? 'none' : '';
+});
+
+document.querySelectorAll(
+  '.location-detail-loss'
+).forEach(el => {
+  el.style.display = isLocked ? 'none' : '';
+});
+
+document.querySelector(
+  '.location-detail-actions'
+).style.display = isLocked ? 'none' : '';
   // 선택된 장소 강조
   document.querySelectorAll('.map-location')
     .forEach(marker => {
@@ -9922,7 +9966,9 @@ function renderMapLocations() {
     const marker = document.createElement("div");
 
 marker.className = "map-location";
-
+if (location.can_explore === false) {
+  marker.style.opacity = "0.4";
+}
 if (location.is_base) {
   marker.classList.add("is-base");
 }
@@ -9941,8 +9987,9 @@ if (location.is_base) {
     // 장소 아이콘
     const icon = document.createElement("span");
 
-    icon.className =
-      `map-location-icon map-danger-${location.danger_level}`;
+   icon.className = location.can_explore === false
+  ? "map-location-icon"
+  : `map-location-icon map-danger-${location.danger_level}`;
 
 icon.textContent = location.is_base
   ? "⬢"
