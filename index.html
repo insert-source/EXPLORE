@@ -1106,14 +1106,15 @@ async function loadInventory() {
     .gt('quantity', 0)
     .order('created_at', { ascending: true });
 
-  if (error) {
-    console.error('인벤토리 조회 실패:', error);
+if (error) {
+  console.error('인벤토리 조회 실패:', error);
 
-    document.getElementById('inventory-list').textContent =
-      '아이템 정보를 불러오지 못했습니다.';
+  document.getElementById('inventory-list').textContent =
+    '조회 오류: ' + error.message +
+    ' / 오류 코드: ' + error.code;
 
-    return;
-  }
+  return;
+}
   renderInventory(data || []);
 }
   // 아이템 사용
@@ -1206,7 +1207,7 @@ adminOpen.style.display = 'none';
     return;
   }
 
-  document.getElementById('user-status').textContent = user.email;
+ document.getElementById('user-status').textContent = 'LOADING...';
   loginOpen.style.display = 'none';
   signupOpen.style.display = 'none';
   logoutBtn.style.display = 'inline-block';
@@ -1229,7 +1230,8 @@ adminOpen.style.display = 'none';
     adminPanel.style.display = 'none';
     return;
   }
-
+document.getElementById('user-status').textContent =
+  isAdmin ? 'ADMIN' : (profile.player_name || '이름 미등록');
  if (isAdmin) {
   dashboard.style.display = 'grid';
   pendingScreen.style.display = 'none';
@@ -1348,7 +1350,7 @@ deleteBtn.onclick = () => {
     player.player_name || '이름 미등록'
   );
 };
-      buttons.append(approve, reject);
+buttons.append(approve, reject, deleteBtn);
       row.appendChild(buttons);
     }
 
