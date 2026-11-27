@@ -2552,10 +2552,9 @@ function renderMapPlayers() {
     group.dataset.y = location.y;
 
 
-    // 3명 이상이면 금색 점과 캐릭터 목록 표시
+ // 본인을 제외한 타인이 3명 이상이면 그룹으로 표시
 
-if (players.length >= 3) {
-
+if (otherPlayers.length >= 3) {
   group.dataset.locationId = locationId;
 
   const entry = document.createElement('div');
