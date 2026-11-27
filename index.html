@@ -4231,12 +4231,12 @@ max-width:calc(100vw - 30px);
   </div>
 
   <div class="widget-title">
-    DROP PROBABILITY
+    ITEM APPEARANCE PROBABILITY
   </div>
 
   <p class="item-drop-notice">
-    장소별 아이템 획득 확률을 설정합니다.
-    한 장소의 전체 획득 확률은 100%를 초과할 수 없습니다.
+    장소별 아이템 출현 확률을 설정합니다.
+    최종 출현 확률 합계는 100%로 맞춰 주세요. 전체 획득 확률은 장소 관리에서 설정합니다.
   </p>
 
   <div id="admin-item-drop-list">
@@ -4246,7 +4246,7 @@ max-width:calc(100vw - 30px);
   <button type="button"
           id="admin-item-drop-save"
           disabled>
-    획득 확률 저장
+    출현 확률 저장
   </button>
 
   <p id="admin-item-drop-message"></p>
@@ -4734,6 +4734,10 @@ max-width:calc(100vw - 30px);
                  value="10">
 
         </div>
+        <div class="admin-location-field">
+          <label for="admin-location-item-drop-chance">아이템 획득 확률 (%)</label>
+          <input type="number" id="admin-location-item-drop-chance" min="0" max="100" step="1" value="0">
+        </div>
 
       </div>
 
@@ -5016,7 +5020,7 @@ max-width:calc(100vw - 30px);
 <details class="location-loss-settings location-extra"><summary>아이템 획득 확률</summary>
 
   <p class="location-section-notice">
-    아이템 획득 확률은 아이템 관리창에서 수정할 수 있습니다.
+    아이템별 출현 확률은 아이템 관리창에서 수정할 수 있습니다.
   </p>
 
   <div id="admin-location-drop-summary">
@@ -12058,8 +12062,8 @@ function updateAdminItemDropPreview() {
 
       meta.textContent =
         `다른 아이템: ${otherTotal}%` +
-        ` / 전체 획득: ${total}%` +
-        ` / 실패: ${100 - total}%`;
+        ` / 출현 확률 합계: ${total}%` +
+        (total > 0 && total !== 100 ? " (100%로 조정 필요)" : "");
 
     }
 
@@ -12075,7 +12079,7 @@ function updateAdminItemDropPreview() {
 }
 
 
-// 장소별 획득 확률 저장
+// 장소별 출현 확률 저장
 
 async function saveAdminItemDrops() {
 
@@ -12179,7 +12183,7 @@ async function saveAdminItemDrops() {
       if (editingItemId === itemId) {
 
         itemDropMessage.textContent =
-          '획득 확률 저장 완료!';
+          '출현 확률 저장 완료!';
 
       }
 
@@ -12548,7 +12552,7 @@ function editAdminItem(item) {
   const panel = document.getElementById('admin-item-drop-panel');
 
   document.getElementById('admin-item-drop-title').textContent =
-    item.name + ' — DROP PROBABILITY';
+    item.name + ' — ITEM APPEARANCE PROBABILITY';
 
   panel.style.display = 'block';
 
@@ -13724,8 +13728,8 @@ async function loadLocationDropSummary(locationId) {
     'location-drop-summary-total';
 
   summary.textContent =
-    `전체 아이템 획득 확률: ${total}%\n` +
-    `아이템 획득 실패 확률: ${100 - total}%`;
+    `출현 확률 합계: ${total}%` +
+    (total > 0 && total !== 100 ? " (100%로 조정 필요)" : "");
 
   locationDropSummary.appendChild(summary);
 
@@ -14283,8 +14287,7 @@ document.getElementById(
   document.getElementById(
     'admin-location-explore'
   ).value = 10;
-
-
+  document.getElementById("admin-location-item-drop-chance").value = 0;
 
   document.getElementById(
     'admin-location-visible'
@@ -14349,6 +14352,7 @@ document.getElementById(
   document.getElementById(
     'admin-location-explore'
   ).value = location.explore_minutes;
+  document.getElementById("admin-location-item-drop-chance").value = location.item_drop_chance ?? 0;
 
 
 
@@ -14413,6 +14417,7 @@ const numberIds = [
   'admin-location-y',
   'admin-location-travel',
   'admin-location-explore',
+  'admin-location-item-drop-chance',
   'admin-location-health-chance',
   'admin-location-health-max',
   'admin-location-mental-chance',
@@ -14458,6 +14463,8 @@ const numberIds = [
 
 
 
+item_drop_chance: Number(document.getElementById("admin-location-item-drop-chance").value),
+
 health_loss_chance: Number(document.getElementById(
   'admin-location-health-chance'
 ).value),
@@ -14486,6 +14493,10 @@ is_secret: document.getElementById(
 
 
   // 입력값 검사
+  if (!Number.isInteger(location.item_drop_chance) || location.item_drop_chance < 0 || location.item_drop_chance > 100) {
+    adminLocationMessage.textContent = "아이템 획득 확률은 0~100 사이의 정수여야 합니다.";
+    return;
+  }
   if (!location.name || location.name.length > 100) {
 
     adminLocationMessage.textContent =
