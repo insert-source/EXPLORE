@@ -3774,9 +3774,7 @@ async function loadPlayerMovement() {
 
   if (!user || requestId !== playerMovementRequest) return;
 
-  // 관리자 위치는 표시하지 않음
 
-  if ((user.email || '').toLowerCase() === ADMIN_EMAIL) return;
 
   const { data, error } = await supabaseClient
     .from('player_movement')
@@ -6762,6 +6760,14 @@ const authSwitch = document.getElementById('auth-switch');
 
 // 로그인 창
 loginOpen.onclick = () => {
+
+  authPassword.style.display = '';
+  authPasswordConfirm.style.display = '';
+  authSwitch.style.display = '';
+
+  authEmail.value = '';
+  authPassword.value = '';
+  authPasswordConfirm.value = '';
   authMode = 'login';
   authTitle.textContent = 'LOGIN';
   authSubmit.textContent = '로그인';
@@ -6773,6 +6779,10 @@ loginOpen.onclick = () => {
 
 // 회원가입 창
 signupOpen.onclick = () => {
+
+  authPassword.style.display = '';
+  authPasswordConfirm.style.display = '';
+  authSwitch.style.display = '';
   authMode = 'signup';
   authTitle.textContent = 'SIGN UP';
   authSubmit.textContent = '회원가입';
@@ -6794,7 +6804,46 @@ authSwitch.onclick = () => {
   }
 
 };
+// 관리자 캐릭터 초기 설정
+function openAdminCharacterSetup() {
 
+  signupOpen.click();
+
+  authMode = 'admin_setup';
+
+  authTitle.textContent = 'CHARACTER SETUP';
+  authSubmit.textContent = '캐릭터 등록';
+  authMessage.textContent = '';
+
+  authEmail.value = '';
+  authEmail.placeholder = '캐릭터 이름';
+
+  authPassword.value = '';
+  authPasswordConfirm.value = '';
+
+  authPassword.style.display = 'none';
+  authPasswordConfirm.style.display = 'none';
+  authSwitch.style.display = 'none';
+
+  signupFields.style.display = 'block';
+
+  ['health', 'mental', 'hunger'].forEach(type => {
+
+    signupStats[type] = 0;
+
+    document.getElementById(
+      `signup-${type}-value`
+    ).textContent = '0';
+
+  });
+
+  document.getElementById('player-item1').value = '';
+  document.getElementById('player-item2').value = '';
+  document.getElementById('player-will').value = '';
+
+  authModal.style.display = 'flex';
+
+}
 // 캐릭터 이름을 내부 인증용 주소로 변환
 async function makePlayerAuthEmail(playerName) {
   const normalizedName = playerName
@@ -6823,6 +6872,68 @@ document.getElementById('pending-logout-btn').onclick = async () => {
 };
 // 회원가입 및 로그인
 authSubmit.onclick = async () => {
+
+  // 관리자 캐릭터 초기 설정
+
+  if (authMode === 'admin_setup') {
+
+    const playerName = authEmail.value.trim();
+
+    if (!playerName) {
+      authMessage.textContent = '캐릭터 이름을 입력해 줘.';
+      return;
+    }
+
+    authSubmit.disabled = true;
+    authMessage.textContent = '등록 중...';
+
+    try {
+
+      const { data: sessionData } =
+        await supabaseClient.auth.getSession();
+
+      const user = sessionData.session?.user;
+
+      if (
+        !user ||
+        (user.email || '').toLowerCase() !== ADMIN_EMAIL
+      ) {
+        throw new Error('관리자 로그인이 필요합니다.');
+      }
+
+      const { error } = await supabaseClient.rpc(
+        'save_signup_profile',
+        {
+          p_player_name: playerName,
+          p_health: signupStats.health,
+          p_mental: signupStats.mental,
+          p_hunger: signupStats.hunger,
+          p_item1: document.getElementById('player-item1').value.trim(),
+          p_item2: document.getElementById('player-item2').value.trim(),
+          p_will: document.getElementById('player-will').value
+        }
+      );
+
+      if (error) throw error;
+
+      authModal.style.display = 'none';
+
+      location.reload();
+
+    } catch (error) {
+
+      authMessage.textContent = error.message;
+
+    } finally {
+
+      authSubmit.disabled = false;
+
+    }
+
+    return;
+
+  }
+
   const loginName = authEmail.value.trim();
   const password = authPassword.value;
   const passwordConfirm = authPasswordConfirm.value;
@@ -8184,7 +8295,7 @@ async function loadAdminInventoryPlayers() {
   select.appendChild(placeholder);
 
   data.forEach(player => {
-    if (player.email.toLowerCase() === ADMIN_EMAIL) return;
+
 
     const option = document.createElement('option');
     option.value = player.user_id;
@@ -10416,7 +10527,7 @@ authModal.style.display = 'none';
 
   const { data: profile, error } = await supabaseClient
     .from('profiles')
- .select('approved, status, player_name, health, mental, hunger, item1, item2, will')
+.select('approved, status, player_name, health, mental, hunger, item1, item2, will, signup_completed')
     .eq('user_id', user.id)
     .maybeSingle();
 
@@ -10431,8 +10542,27 @@ authModal.style.display = 'none';
     return;
   }
 document.getElementById('user-status').textContent =
-  isAdmin ? 'ADMIN' : (profile.player_name || '이름 미등록');
- if (isAdmin) {
+  isAdmin
+    ? `${profile.player_name || '이름 미등록'} [ADMIN]`
+    : (profile.player_name || '이름 미등록');
+if (isAdmin) {
+
+  if (!profile.signup_completed) {
+
+    dashboard.style.display = 'none';
+    pendingScreen.style.display = 'none';
+    adminPanel.style.display = 'none';
+
+    if (authMode !== 'admin_setup') {
+      openAdminCharacterSetup();
+    } else {
+      authModal.style.display = 'flex';
+    }
+
+    return;
+
+  }
+
   dashboard.style.display = 'grid';
   pendingScreen.style.display = 'none';
   adminPanel.style.display = 'none';
@@ -10512,8 +10642,8 @@ async function loadAdminUsers() {
     const info = document.createElement('div');
 
     const email = document.createElement('div');
-   email.textContent = player.email.toLowerCase() === ADMIN_EMAIL
-  ? '관리자'
+email.textContent = player.email.toLowerCase() === ADMIN_EMAIL
+  ? `${player.player_name || '이름 미등록'} [관리자]`
   : (player.player_name || '이름 미등록');
     email.style.color = '#eee';
 
