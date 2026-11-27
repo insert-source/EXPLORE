@@ -8973,15 +8973,6 @@ function updateLocationActionButtons() {
   );
 
   if (!location) return;
-  exploreBtn.disabled = true;
-
-  if (!selectedMapLocation) return;
-
-  const location = mapLocations.find(
-    l => l.id === selectedMapLocation.id
-  );
-
-  if (!location) return;
 
 
   // 사망자 조사 제한
