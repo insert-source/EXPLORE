@@ -4231,12 +4231,11 @@ max-width:calc(100vw - 30px);
   </div>
 
   <div class="widget-title">
-    ITEM APPEARANCE PROBABILITY
+    ITEM APPEARANCE LOCATIONS
   </div>
 
   <p class="item-drop-notice">
-    장소별 아이템 출현 확률을 설정합니다.
-    최종 출현 확률 합계는 100%로 맞춰 주세요. 전체 획득 확률은 장소 관리에서 설정합니다.
+    아이템이 출현할 장소를 체크해 주세요. 획득 성공 시 등록된 아이템 중 하나를 균등하게 추첨합니다.
   </p>
 
   <div id="admin-item-drop-list">
@@ -4246,7 +4245,7 @@ max-width:calc(100vw - 30px);
   <button type="button"
           id="admin-item-drop-save"
           disabled>
-    출현 확률 저장
+    출현 장소 저장
   </button>
 
   <p id="admin-item-drop-message"></p>
@@ -5017,10 +5016,10 @@ max-width:calc(100vw - 30px);
 </details>
 <!-- 장소별 아이템 획득 확률 요약 -->
 
-<details class="location-loss-settings location-extra"><summary>아이템 획득 확률</summary>
+<details class="location-loss-settings location-extra"><summary>아이템 획득 정보</summary>
 
   <p class="location-section-notice">
-    아이템별 출현 확률은 아이템 관리창에서 수정할 수 있습니다.
+    출현 장소는 아이템 관리창에서 수정할 수 있습니다.
   </p>
 
   <div id="admin-location-drop-summary">
@@ -11855,361 +11854,90 @@ function resetAdminItemDrops() {
 // 장소별 획득 확률 불러오기
 
 async function loadAdminItemDrops(itemId) {
-
   const requestId = ++itemDropRequest;
-
-  itemDropList.textContent = '획득 확률을 불러오는 중...';
-
+  itemDropList.textContent = '출현 장소를 불러오는 중...';
   itemDropMessage.textContent = '';
-
   itemDropSave.disabled = true;
-
   try {
-
-    const [locationResult, dropResult] =
-      await Promise.all([
-
-        supabaseClient
-          .from('map_locations')
-          .select('id, name, is_visible, is_base')
-          .order('name'),
-
-        supabaseClient
-          .from('location_item_drops')
-          .select('location_id, item_id, drop_chance')
-
-      ]);
-
-    if (
-      requestId !== itemDropRequest ||
-      editingItemId !== itemId
-    ) return;
-
-    if (locationResult.error)
-      throw locationResult.error;
-
-    if (dropResult.error)
-      throw dropResult.error;
-
-    const locations = locationResult.data || [];
-    const drops = dropResult.data || [];
-
-    itemDropList.innerHTML = '';
-
-    if (!locations.length) {
-
-      itemDropList.textContent =
-        '등록된 장소가 없습니다.';
-
-      return;
-
-    }
-
-
-    locations.forEach(location => {
-
-      const locationDrops = drops.filter(
-        drop => drop.location_id === location.id
-      );
-
-      const currentDrop = locationDrops.find(
-        drop => drop.item_id === itemId
-      );
-
-      const currentChance =
-        currentDrop?.drop_chance || 0;
-
-      const otherTotal = locationDrops
-        .filter(drop => drop.item_id !== itemId)
-        .reduce(
-          (sum, drop) => sum + drop.drop_chance,
-          0
-        );
-
-
-      const row = document.createElement('div');
-
-      row.className = 'item-drop-row';
-
-
-      const header = document.createElement('div');
-
-      header.className = 'item-drop-header';
-
-
-      const name = document.createElement('div');
-
+    const [locations, drops] = await Promise.all([
+      supabaseClient.from('map_locations').select('id, name, is_visible, is_base').order('name'),
+      supabaseClient.from('location_item_drops').select('location_id').eq('item_id', itemId)
+    ]);
+    if (requestId !== itemDropRequest || editingItemId !== itemId) return;
+    if (locations.error) throw locations.error;
+    if (drops.error) throw drops.error;
+    const registered = new Set((drops.data || []).map(d => d.location_id));
+    itemDropList.replaceChildren();
+    for (const location of locations.data || []) {
+      const row = document.createElement('label');
+      row.className = 'item-drop-row item-drop-header';
+      row.style.cursor = 'pointer';
+      const name = document.createElement('span');
       name.className = 'item-drop-name';
-
-      name.textContent =
-        location.name +
-        (location.is_base ? ' [BASE]' : '') +
-        (!location.is_visible ? ' [비공개]' : '');
-
-
-      const inputWrap = document.createElement('div');
-
-      inputWrap.className = 'item-drop-input';
-
-
+      name.textContent = location.name + (location.is_base ? ' [BASE]' : '') + (!location.is_visible ? ' [비공개]' : '');
       const input = document.createElement('input');
-
-      input.type = 'number';
-
-      input.min = '0';
-
-      input.max = String(
-        Math.max(0, 100 - otherTotal)
-      );
-
-      input.step = '1';
-
-      input.value = currentChance;
-
-      input.className = 'item-drop-chance';
-
+      input.type = 'checkbox';
+      input.className = 'item-drop-location-check';
+      input.style.width = '18px';
+      input.style.height = '18px';
+      input.checked = registered.has(location.id);
       input.dataset.locationId = location.id;
-
-      input.dataset.otherTotal = otherTotal;
-
-      input.dataset.originalChance = currentChance;
-
-
-      const percent = document.createElement('span');
-
-      percent.textContent = '%';
-
-
-      inputWrap.append(input, percent);
-
-      header.append(name, inputWrap);
-
-
-      const meta = document.createElement('div');
-
-      meta.className = 'item-drop-meta';
-
-
-      row.append(header, meta);
-
-      itemDropList.appendChild(row);
-
-
-      input.addEventListener(
-        'input',
-        updateAdminItemDropPreview
-      );
-
-    });
-
+      input.dataset.original = String(input.checked);
+      input.addEventListener('change', updateAdminItemDropPreview);
+      row.append(name, input);
+      itemDropList.append(row);
+    }
+    if (!itemDropList.children.length) itemDropList.textContent = '등록된 장소가 없습니다.';
     updateAdminItemDropPreview();
-
   } catch (error) {
-
-    if (requestId !== itemDropRequest) return;
-
-    itemDropList.textContent =
-      '조회 실패: ' + error.message;
-
+    if (requestId === itemDropRequest) itemDropList.textContent = '조회 실패: ' + error.message;
   }
-
 }
-
-
-// 확률 합계 실시간 계산
 
 function updateAdminItemDropPreview() {
-
-  const inputs = itemDropList.querySelectorAll(
-    '.item-drop-chance'
-  );
-
-  let invalid = false;
-
-  inputs.forEach(input => {
-
-    const chance = Number(input.value);
-
-    const otherTotal =
-      Number(input.dataset.otherTotal);
-
-    const total = otherTotal + chance;
-
-    const meta = input
-      .closest('.item-drop-row')
-      .querySelector('.item-drop-meta');
-
-    const valid =
-      input.value.trim() !== '' &&
-      Number.isInteger(chance) &&
-      chance >= 0 &&
-      chance <= 100 &&
-      total <= 100;
-
-
-    if (!valid) {
-
-      invalid = true;
-
-      meta.classList.add('is-invalid');
-
-      meta.textContent =
-        `설정 가능 범위: 0~${Math.max(0, 100 - otherTotal)}%`;
-
-    } else {
-
-      meta.classList.remove('is-invalid');
-
-      meta.textContent =
-        `다른 아이템: ${otherTotal}%` +
-        ` / 출현 확률 합계: ${total}%` +
-        (total > 0 && total !== 100 ? " (100%로 조정 필요)" : "");
-
-    }
-
-  });
-
-
-  itemDropSave.disabled =
-    invalid ||
-    itemDropSaving ||
-    !editingItemId ||
-    !inputs.length;
-
+  const inputs = Array.from(itemDropList.querySelectorAll('.item-drop-location-check'));
+  itemDropSave.disabled = itemDropSaving || !editingItemId || !inputs.some(i => String(i.checked) !== i.dataset.original);
 }
 
-
-// 장소별 출현 확률 저장
-
 async function saveAdminItemDrops() {
-
   if (!editingItemId || itemDropSaving) return;
-
   const itemId = editingItemId;
-
   const requestId = itemDropRequest;
-
-  const inputs = Array.from(
-    itemDropList.querySelectorAll(
-      '.item-drop-chance'
-    )
-  );
-
-  const rows = [];
-
-  for (const input of inputs) {
-
-    const chance = Number(input.value);
-
-    const otherTotal =
-      Number(input.dataset.otherTotal);
-
-    if (
-      input.value.trim() === '' ||
-      !Number.isInteger(chance) ||
-      chance < 0 ||
-      chance > 100 ||
-      chance + otherTotal > 100
-    ) {
-
-      itemDropMessage.textContent =
-        '획득 확률을 다시 확인해 주세요.';
-
-      return;
-
-    }
-
-
-    // 변경된 확률만 저장
-
-    if (
-      chance !== Number(input.dataset.originalChance)
-    ) {
-
-      rows.push({
-
-        location_id: input.dataset.locationId,
-
-        item_id: itemId,
-
-        drop_chance: chance
-
-      });
-
-    }
-
-  }
-
-
-  if (!rows.length) {
-
-    itemDropMessage.textContent =
-      '변경된 획득 확률이 없습니다.';
-
-    return;
-
-  }
-
-
+  const inputs = Array.from(itemDropList.querySelectorAll('.item-drop-location-check'));
+  const changed = inputs.filter(i => String(i.checked) !== i.dataset.original);
+  if (!changed.length) return;
   itemDropSaving = true;
-
   itemDropSave.disabled = true;
-
-  inputs.forEach(input => {
-    input.disabled = true;
-  });
-
+  inputs.forEach(i => i.disabled = true);
   itemDropMessage.textContent = '저장 중...';
-
-
+  let completed = false;
   try {
-
-    const { error } = await supabaseClient
-      .from('location_item_drops')
-      .upsert(rows, {
-        onConflict: 'location_id,item_id'
-      });
-
-    if (error) throw error;
-
-
-    if (
-      editingItemId === itemId &&
-      requestId === itemDropRequest
-    ) {
-
-      await loadAdminItemDrops(itemId);
-
-      if (editingItemId === itemId) {
-
-        itemDropMessage.textContent =
-          '출현 확률 저장 완료!';
-
-      }
-
+    const added = changed.filter(i => i.checked).map(i => ({location_id: i.dataset.locationId, item_id: itemId, drop_chance: 0}));
+    const removed = changed.filter(i => !i.checked).map(i => i.dataset.locationId);
+    if (added.length) {
+      const {error} = await supabaseClient.from('location_item_drops').upsert(added, {onConflict: 'location_id,item_id', ignoreDuplicates: true});
+      if (error) throw error;
     }
-
+    if (removed.length) {
+      const {error} = await supabaseClient.from('location_item_drops').delete().eq('item_id', itemId).in('location_id', removed);
+      if (error) throw error;
+    }
+    completed = true;
   } catch (error) {
-
-    if (requestId === itemDropRequest) {
-
-      itemDropMessage.textContent =
-        '저장 실패: ' + error.message;
-
+    if (requestId === itemDropRequest && editingItemId === itemId) {
+      await loadAdminItemDrops(itemId);
+      if (editingItemId === itemId) itemDropMessage.textContent = '저장 실패 (일부 변경이 반영되었을 수 있습니다): ' + error.message;
     }
-
   } finally {
-
+    if (completed && requestId === itemDropRequest && editingItemId === itemId) {
+      await loadAdminItemDrops(itemId);
+      if (editingItemId === itemId) itemDropMessage.textContent = '출현 장소 저장 완료!';
+    }
     itemDropSaving = false;
-
-    inputs.forEach(input => {
-      input.disabled = false;
-    });
-
+    inputs.forEach(i => i.disabled = false);
     updateAdminItemDropPreview();
-
+    if (editingLocationId) loadLocationDropSummary(editingLocationId);
   }
-
 }
 
 
@@ -12552,7 +12280,7 @@ function editAdminItem(item) {
   const panel = document.getElementById('admin-item-drop-panel');
 
   document.getElementById('admin-item-drop-title').textContent =
-    item.name + ' — ITEM APPEARANCE PROBABILITY';
+    item.name + ' — ITEM APPEARANCE LOCATIONS';
 
   panel.style.display = 'block';
 
@@ -13641,98 +13369,39 @@ function resetLocationDropSummary() {
 // 장소별 아이템 획득 확률 요약 불러오기
 
 async function loadLocationDropSummary(locationId) {
-
   const requestId = ++locationDropSummaryRequest;
-
-  locationDropSummary.textContent =
-    '획득 확률을 불러오는 중...';
-
-  const { data, error } = await supabaseClient
-    .from('location_item_drops')
-    .select('drop_chance, items(name)')
-    .eq('location_id', locationId)
-    .gt('drop_chance', 0)
-    .order('drop_chance', {
-      ascending: false
-    });
-
-  if (
-    requestId !== locationDropSummaryRequest ||
-    editingLocationId !== locationId
-  ) return;
-
-  if (error) {
-
-    locationDropSummary.textContent =
-      '확률 조회 실패: ' + error.message;
-
-    return;
-
+  locationDropSummary.textContent = '획득 정보를 불러오는 중...';
+  try {
+    const [location, drops] = await Promise.all([
+      supabaseClient.from('map_locations').select('item_drop_chance').eq('id', locationId).single(),
+      supabaseClient.from('location_item_drops').select('items(name)').eq('location_id', locationId)
+    ]);
+    if (requestId !== locationDropSummaryRequest || editingLocationId !== locationId) return;
+    if (location.error) throw location.error;
+    if (drops.error) throw drops.error;
+    locationDropSummary.replaceChildren();
+    const summary = document.createElement('div');
+    summary.className = 'location-drop-summary-total';
+    summary.textContent = `아이템 획득 확률: ${location.data.item_drop_chance}%`;
+    locationDropSummary.append(summary);
+    const items = (drops.data || []).sort((a,b) => (a.items?.name || '').localeCompare(b.items?.name || '', 'ko'));
+    const title = document.createElement('div');
+    title.className = 'location-section-notice';
+    title.textContent = `출현 아이템 목록 (${items.length}개)`;
+    locationDropSummary.append(title);
+    for (const drop of items) {
+      const row = document.createElement('div');
+      row.className = 'location-drop-summary-row';
+      row.textContent = drop.items?.name || '알 수 없는 아이템';
+      locationDropSummary.append(row);
+    }
+    const notice = document.createElement('div');
+    notice.className = 'location-section-notice';
+    notice.textContent = items.length ? '획득 성공 시 등록된 아이템 중 하나를 무작위로 획득합니다.' : '획득 가능한 아이템이 없습니다.';
+    locationDropSummary.append(notice);
+  } catch (error) {
+    if (requestId === locationDropSummaryRequest && editingLocationId === locationId) locationDropSummary.textContent = '조회 실패: ' + error.message;
   }
-
-  locationDropSummary.innerHTML = '';
-
-  const drops = data || [];
-
-  let total = 0;
-
-
-  if (!drops.length) {
-
-    const empty = document.createElement('div');
-
-    empty.className = 'location-section-empty';
-
-    empty.textContent =
-      '획득 가능한 아이템이 없습니다.';
-
-    locationDropSummary.appendChild(empty);
-
-  }
-
-
-  drops.forEach(drop => {
-
-    total += drop.drop_chance;
-
-    const row = document.createElement('div');
-
-    row.className = 'location-drop-summary-row';
-
-
-    const name = document.createElement('span');
-
-    name.textContent =
-      drop.items?.name || '알 수 없는 아이템';
-
-
-    const chance = document.createElement('span');
-
-    chance.className =
-      'location-drop-summary-chance';
-
-    chance.textContent =
-      `${drop.drop_chance}%`;
-
-
-    row.append(name, chance);
-
-    locationDropSummary.appendChild(row);
-
-  });
-
-
-  const summary = document.createElement('div');
-
-  summary.className =
-    'location-drop-summary-total';
-
-  summary.textContent =
-    `출현 확률 합계: ${total}%` +
-    (total > 0 && total !== 100 ? " (100%로 조정 필요)" : "");
-
-  locationDropSummary.appendChild(summary);
-
 }
 // 장소 관리 팝업 열기
 locationAdminOpen.onclick = async () => {
