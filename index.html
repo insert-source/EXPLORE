@@ -10073,7 +10073,7 @@ function updateMapLocationPositions() {
 
 
 // 장소 데이터 불러오기
-async function loadMapLocations() {
+async function loadMapLocations(centerOnPlayer = false, deathLocationId = null) {
 
   const requestId = ++mapLocationRequest;
 
@@ -10108,6 +10108,17 @@ async function loadMapLocations() {
   await loadPlayerMovement();
 
   if (requestId !== mapLocationRequest) return;
+
+  if (centerOnPlayer) {
+    const locationId = deathLocationId || playerMovement?.current_location_id;
+    const location = mapLocations.find(l => l.id === locationId);
+    if (location && map.clientWidth > 0 && map.clientHeight > 0) {
+      const size = 50 * scale;
+      x = map.clientWidth / 2 - Number(location.x) * size;
+      y = map.clientHeight / 2 - Number(location.y) * size;
+      updateMap();
+    }
+  }
 
   startMapPlayersRefresh();
 
@@ -11688,7 +11699,7 @@ function renderPlayerProfile(profile) {
   loadActivityLogs();
 
   // 지도 장소 불러오기
-  loadMapLocations();
+  loadMapLocations(true, profile.is_dead ? profile.death_location_id : null);
 }
 
 // 유서 저장
@@ -15335,7 +15346,7 @@ playerNameInput.addEventListener('keydown', event => {
       name.style.gap = '8px';
       name.style.flexWrap = 'wrap';
       const badge = document.createElement('span');
-    badge.textContent = 'YOU';
+      badge.textContent = 'YOU';
       badge.style.cssText = `
         display:inline-flex;align-items:center;
         padding:1px 8px;border-radius:12px;
@@ -15861,7 +15872,7 @@ authModal.style.display = 'none';
 
   const { data: profile, error } = await supabaseClient
     .from('profiles')
-.select('approved, status, player_name, health, mental, hunger, item1, item2, will, signup_completed, is_dead')
+.select('approved, status, player_name, health, mental, hunger, item1, item2, will, signup_completed, is_dead, death_location_id')
     .eq('user_id', user.id)
     .maybeSingle();
 
