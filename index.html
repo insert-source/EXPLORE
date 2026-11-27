@@ -6749,11 +6749,13 @@ console.log('사망 여부 판정:', causedDeath);
 
 async function loadUnreadExploreResult() {
 
-  if (
-    exploreResultLoading ||
-    exploreResultSaving ||
-    currentExploreResult
-  ) return;
+if (
+  exploreResultLoading ||
+  exploreResultSaving ||
+  currentExploreResult ||
+  currentDeathAlert ||
+  currentStealAlert
+) return;
 
   exploreResultLoading = true;
 
@@ -6789,7 +6791,11 @@ async function loadUnreadExploreResult() {
 
     if (error) throw error;
 
-    if (!data) return;
+    if (
+  !data ||
+  currentDeathAlert ||
+  currentStealAlert
+) return;
 
 
    exploreResultUserId = user.id;
@@ -8056,7 +8062,10 @@ async function loadUnreadStealAlert() {
 
   // 조사 결과 팝업이 열려 있으면 대기
 
-  if (currentExploreResult) return;
+if (
+  currentExploreResult ||
+  currentDeathAlert
+) return;
 
 
   const requestId = ++stealAlertRequest;
@@ -8099,7 +8108,11 @@ async function loadUnreadStealAlert() {
 
     if (error) throw error;
 
-    if (data && !currentExploreResult) {
+if (
+  data &&
+  !currentExploreResult &&
+  !currentDeathAlert
+) {
 
       stealAlertUserId = user.id;
 
