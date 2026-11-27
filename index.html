@@ -4405,6 +4405,47 @@ document.addEventListener('keydown', e => {
   }
 
 });
+  // ========================================
+// 관리자 관리창 바깥 클릭 시 닫기
+// ========================================
+
+const adminOutsideClosePanels = [
+  {
+    panelId: 'admin-panel',
+    closeId: 'admin-close'
+  },
+  {
+    panelId: 'item-admin-panel',
+    closeId: 'item-admin-close'
+  },
+  {
+    panelId: 'stat-admin-panel',
+    closeId: 'stat-admin-close'
+  },
+  {
+    panelId: 'location-admin-panel',
+    closeId: 'location-admin-close'
+  }
+];
+
+adminOutsideClosePanels.forEach(({ panelId, closeId }) => {
+
+  const panel = document.getElementById(panelId);
+  const closeButton = document.getElementById(closeId);
+
+  if (!panel || !closeButton) return;
+
+  panel.addEventListener('click', e => {
+
+    if (e.target === panel) {
+
+      closeButton.click();
+
+    }
+
+  });
+
+});
 async function checkPlayerAccess() {
   const { data: sessionData } =
     await supabaseClient.auth.getSession();
