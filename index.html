@@ -711,6 +711,91 @@ top: 0;
   border-color: #d88ca3;
   color: #ffffff;
 }
+  /* 장소 상세창 소형 가로형 디자인 */
+
+#location-detail-panel {
+  width: 320px;
+  padding: 10px 12px;
+  max-height: 65%;
+  border-radius: 4px;
+}
+
+.location-detail-header {
+  padding-bottom: 4px;
+  margin-bottom: 7px;
+}
+
+.location-detail-title {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+}
+
+#location-detail-close {
+  font-size: 17px;
+  line-height: 1;
+}
+
+#location-detail-name {
+  font-size: 16px;
+  margin-bottom: 3px;
+}
+
+#location-detail-coordinates {
+  font-size: 10px;
+}
+
+#location-detail-description {
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 8px 0;
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+.location-detail-info {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  padding: 6px 0;
+}
+
+.location-detail-row {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 0;
+  font-size: 10px;
+}
+
+.location-detail-row:not(:last-child) {
+  border-right: 1px solid #49303a;
+}
+
+.location-detail-value {
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.location-detail-actions {
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.location-detail-actions button {
+  padding: 6px 4px;
+  font-size: 11px;
+}
+
+#location-detail-message {
+  margin-top: 5px;
+  font-size: 10px;
+}
+
+#location-detail-message:empty {
+  display: none;
+}
 </style>
 </head>
 
