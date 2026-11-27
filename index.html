@@ -4073,6 +4073,10 @@ max-width:calc(100vw - 30px);
     <!-- 등록된 아이템 목록 -->
     <section class="widget">
       <div class="widget-title">ITEM LIST</div>
+<div style="display:flex;gap:8px;margin-bottom:10px;">
+<button type="button" id="admin-item-add">+ 아이템 추가</button>
+<button type="button" id="admin-item-bulk-open">일괄 등록</button>
+</div>
 <div style="display:flex; gap:8px; margin-bottom:10px;">
 
   <input
@@ -4128,9 +4132,7 @@ max-width:calc(100vw - 30px);
     </section>
 <!-- 아이템 일괄 등록 -->
 
-<button type="button" id="admin-item-bulk-open">
-  일괄 등록
-</button>
+
 
 <div id="admin-item-bulk-panel"
      style="display:none; margin:12px 0;">
@@ -4140,7 +4142,7 @@ max-width:calc(100vw - 30px);
   </div>
 
   <div style="font-size:11px; color:#998c92; margin:10px 0;">
-    이름 / 설명 / 체력 / 정신력 / 허기 / 사용 가능 / 소모성
+    이름 / 설명 / 체력 / 정신력 / 허기 / 사용 가능 (사용 시 소모)
     <br>
     엑셀에서 복사한 내용을 아래에 붙여넣으세요.
   </div>
@@ -4185,42 +4187,6 @@ max-width:calc(100vw - 30px);
   </div>
 
 </div>
-    <!-- 아이템 등록 및 수정 -->
-    <section class="widget" style="margin-top:12px;">
-     <div class="widget-title">NEW ITEM REGISTRATION</div>
-
-      <div style="
-        display:flex;
-        flex-direction:column;
-        gap:10px;
-        padding:12px;
-      ">
-
-        <label>아이템 이름</label>
-        <input type="text" id="admin-item-name">
-
-        <label>아이템 설명</label>
-        <textarea id="admin-item-description" rows="3"></textarea>
-
-        <label>체력 변화량</label>
-        <input type="number" id="admin-item-health" value="0">
-
-        <label>정신력 변화량</label>
-        <input type="number" id="admin-item-mental" value="0">
-
-        <label>허기 변화량</label>
-        <input type="number" id="admin-item-hunger" value="0">
-
-        <label>
-          <input type="checkbox" id="admin-item-usable">
-          사용 가능
-        </label>
-
-      <label>
-  <input type="checkbox" id="admin-item-consumable">
-  사용 시 소모
-</label>
-
 <!-- 장소별 아이템 획득 확률 -->
 <div class="item-drop-settings"
      id="admin-item-drop-panel"
@@ -4263,17 +4229,6 @@ max-width:calc(100vw - 30px);
   <p id="admin-item-drop-message"></p>
 
 </div>
-
-<div style="display:flex;gap:8px;">
-          <button id="admin-item-new">신규 등록</button>
-          <button id="admin-item-save">저장</button>
-        </div>
-
-        <p id="admin-item-message"
-           style="font-size:12px;color:#d88ca3;"></p>
-
-      </div>
-    </section>
 
     <!-- 플레이어 아이템 지급 및 회수 -->
     <section class="widget" style="margin-top:12px;">
@@ -11758,7 +11713,7 @@ const itemAdminClose =
 itemAdminOpen.onclick = async () => {
   itemAdminPanel.style.display = 'flex';
 
-  resetAdminItemEditor();
+  closeAdminItemDrops();
 
   document.getElementById('admin-inventory-message').textContent = '';
 
@@ -11768,13 +11723,12 @@ itemAdminOpen.onclick = async () => {
 
 itemAdminClose.onclick = () => {
 
-  if (document.getElementById('admin-item-inline-save').disabled &&
-      adminItemChanges.size > 0) {
+  if (inlineBusy()) {
     alert('저장이 진행 중입니다.');
     return;
   }
 
-  if (adminItemChanges.size > 0) {
+  if (adminItemChanges.size + newAdminItems.size > 0) {
 
     if (!confirm('저장하지 않은 변경사항이 있습니다. 취소하고 닫으시겠습니까?')) {
       return;
@@ -11783,7 +11737,9 @@ itemAdminClose.onclick = () => {
   }
 
   adminItemChanges.clear();
-
+  newAdminItems.clear();
+  resetBulkItemPanel();
+  document.getElementById('admin-item-bulk-panel').style.display = 'none';
   updateInlineItemStatus();
 
   closeAdminItemDrops();
@@ -12190,10 +12146,27 @@ itemDropSave.onclick = saveAdminItemDrops;
 // 전체 아이템 목록 불러오기
 
 let adminItemCache = [];
+const newAdminItems = new Map();
+let inlineSaving = false;
+let inlineLoading = false;
+const inlineFields = ['name','description','health_effect','mental_effect','hunger_effect','usable','consumable'];
+function inlineBusy() { return inlineSaving || inlineLoading || itemDropSaving || document.getElementById('admin-item-bulk-input').disabled; }
+document.getElementById('admin-item-add').onclick = () => {
+  if (inlineBusy()) return;
+  const id = 'new-' + crypto.randomUUID();
+  newAdminItems.set(id, {id, name:'', description:'', health_effect:0, mental_effect:0, hunger_effect:0, usable:false, consumable:false});
+  renderAdminItemTable(); updateInlineItemStatus();
+  document.getElementById('admin-item-list').scrollTop = 0;
+  document.querySelector('#admin-item-list tbody input')?.focus();
+};
 const adminItemChanges = new Map();
 
 function updateInlineItem(item, key, value, row) {
 
+  if (newAdminItems.has(item.id)) {
+    newAdminItems.get(item.id)[key] = value;
+    updateInlineItemStatus(); return;
+  }
   const changes = adminItemChanges.get(item.id) || {};
 
   if (value === item[key]) {
@@ -12219,13 +12192,13 @@ function updateInlineItem(item, key, value, row) {
 
 function updateInlineItemStatus() {
 
-  const count = adminItemChanges.size;
+  const count = adminItemChanges.size + newAdminItems.size;
 
   document.getElementById('admin-item-inline-save').disabled =
-    count === 0;
+    count === 0 || inlineSaving;
 
   document.getElementById('admin-item-inline-reset').disabled =
-    count === 0;
+    count === 0 || inlineSaving;
 
   document.getElementById('admin-item-inline-message').textContent =
     count ? `저장하지 않은 아이템 ${count}개` : '';
@@ -12236,6 +12209,8 @@ async function loadAdminItems() {
   const list = document.getElementById('admin-item-list');
   const select = document.getElementById('admin-inventory-item');
 
+  inlineLoading = true;
+  const previous = select.value;
   list.textContent = '아이템 목록을 불러오는 중...';
 
   const { data, error } = await supabaseClient
@@ -12243,6 +12218,7 @@ async function loadAdminItems() {
     .select('*')
     .order('name', { ascending: true });
 
+  inlineLoading = false;
   if (error) {
     adminItemCache = [];
     list.textContent = '조회 실패: ' + error.message;
@@ -12265,6 +12241,7 @@ async function loadAdminItems() {
 
   });
 
+  if (data.some(item => item.id === previous)) select.value = previous;
   renderAdminItemTable();
 
 }
@@ -12276,137 +12253,44 @@ document.getElementById(
 document.getElementById(
   'admin-item-sort'
 ).addEventListener('change', renderAdminItemTable);
-  document.getElementById('admin-item-inline-reset').onclick = () => {
-
-  if (!confirm('저장하지 않은 변경사항을 취소하시겠습니까?')) return;
-
-  adminItemChanges.clear();
-
-  renderAdminItemTable();
-  updateInlineItemStatus();
-
+document.getElementById('admin-item-inline-reset').onclick = () => {
+  if (inlineBusy() || !confirm('변경사항을 취소하시겠습니까?')) return;
+  adminItemChanges.clear(); newAdminItems.clear(); renderAdminItemTable(); updateInlineItemStatus();
 };
-
-
 document.getElementById('admin-item-inline-save').onclick = async () => {
-
+  if (inlineBusy()) return;
   const message = document.getElementById('admin-item-inline-message');
-
   const rows = [];
-
-  for (const [id, changes] of adminItemChanges) {
-
-    const original = adminItemCache.find(item => item.id === id);
-
-    if (!original) {
-      message.textContent = '아이템을 찾을 수 없습니다.';
-      return;
-    }
-
-    const item = { ...original, ...changes };
-
-    const effects = [
-      item.health_effect,
-      item.mental_effect,
-      item.hunger_effect
-    ];
-
-    if (!item.name.trim()) {
-      message.textContent = '아이템 이름은 비워둘 수 없습니다.';
-      return;
-    }
-
-    if (effects.some(value =>
-      !Number.isInteger(value) || value < -100 || value > 100
-    )) {
-      message.textContent =
-        item.name + ': 능력치 변화량은 -100~100 사이의 정수여야 합니다.';
-      return;
-    }
-
-    if (item.usable && !item.consumable &&
-        effects.some(value => value !== 0)) {
-
-      message.textContent =
-        item.name + ': 능력치에 영향을 주는 사용 가능 아이템은 소모품이어야 합니다.';
-
-      return;
-    }
-
-    const payload = { ...changes };
-
-    if ('name' in payload) {
-      payload.name = payload.name.trim();
-    }
-
-    if ('description' in payload) {
-      payload.description = payload.description.trim();
-    }
-
-    rows.push({ id, payload });
-
+  for (const item of [...adminItemCache.filter(i => adminItemChanges.has(i.id)), ...newAdminItems.values()]) {
+    const draft = {...item, ...adminItemChanges.get(item.id)};
+    const payload = Object.fromEntries(inlineFields.map(k => [k,draft[k]]));
+    payload.name = (payload.name || '').trim(); payload.description = (payload.description || '').trim();
+    payload.usable = Boolean(payload.usable); payload.consumable = payload.usable;
+    if (!payload.name) { message.textContent = '아이템 이름을 입력해 주세요.'; return; }
+    if (['health_effect','mental_effect','hunger_effect'].some(k => !Number.isInteger(payload[k]) || Math.abs(payload[k]) > 100)) { message.textContent = payload.name + ': 능력치는 -100~100 사이 정수여야 합니다.'; return; }
+    rows.push({id:item.id, fresh:newAdminItems.has(item.id), payload});
   }
-
-  if (!rows.length) return;
-
-  if (!confirm(`${rows.length}개 아이템의 변경사항을 저장하시겠습니까?`)) return;
-
-  const controls = document.querySelectorAll(
-    '#admin-item-list input, #admin-item-list textarea, #admin-item-list button, #admin-item-inline-save, #admin-item-inline-reset, #admin-item-search, #admin-item-sort'
-  );
-
+  if (!rows.length || !confirm(`${rows.length}개 아이템을 저장하시겠습니까?`)) return;
+  inlineSaving = true;
+  const controls = [...itemAdminPanel.querySelectorAll('button,input,textarea,select')].filter(el => !el.disabled);
   controls.forEach(el => el.disabled = true);
-
   message.textContent = '저장 중...';
-
-  let saved = 0;
-
+  let saved = 0, failure = '';
   try {
-
     for (const row of rows) {
-
-      const { error } = await supabaseClient
-        .from('items')
-        .update(row.payload)
-        .eq('id', row.id)
-        .select('id')
-        .single();
-
+      const query = supabaseClient.from('items');
+      const {error} = await (row.fresh ? query.insert(row.payload) : query.update(row.payload).eq('id',row.id)).select('id').single();
       if (error) throw error;
-
-      adminItemChanges.delete(row.id);
-      saved++;
-
+      newAdminItems.delete(row.id); adminItemChanges.delete(row.id); saved++;
     }
-
-    await loadAdminItems();
-
-    updateInlineItemStatus();
-
-    message.textContent = `${saved}개 아이템 저장 완료!`;
-
-  } catch (error) {
-
-    await loadAdminItems();
-
-    updateInlineItemStatus();
-
-    message.textContent =
-      `${saved}개 저장 완료 / 저장 실패: ${error.message}`;
-
-  } finally {
-
-    controls.forEach(el => el.disabled = false);
-
-    document.getElementById('admin-item-inline-save').disabled =
-      adminItemChanges.size === 0;
-
-    document.getElementById('admin-item-inline-reset').disabled =
-      adminItemChanges.size === 0;
-
+  } catch (error) { failure = error.message; }
+  finally {
+    controls.forEach(el => el.disabled = false); inlineSaving = false;
+    await loadAdminItems(); updateInlineItemStatus();
+    message.textContent = `${saved}개 저장 완료` + (failure ? ' / 실패: ' + failure : '');
   }
-
 };
+
 function renderAdminItemTable() {
 
   const list = document.getElementById('admin-item-list');
@@ -12426,7 +12310,6 @@ function renderAdminItemTable() {
         <th>정신력</th>
         <th>허기</th>
         <th>사용</th>
-        <th>소모</th>
         <th>관리</th>
       </tr>
     </thead>
@@ -12462,7 +12345,7 @@ filteredItems.sort((a, b) => {
 
 });
 
-filteredItems.forEach(item => {
+[...Array.from(newAdminItems.values()).reverse(), ...filteredItems].forEach(item => {
 
     const row = document.createElement('tr');
 
@@ -12473,7 +12356,7 @@ filteredItems.forEach(item => {
 
 row.classList.toggle(
   'is-modified',
-  adminItemChanges.has(item.id)
+  adminItemChanges.has(item.id) || newAdminItems.has(item.id)
 );
 
 [
@@ -12482,8 +12365,7 @@ row.classList.toggle(
   ['health_effect', 'number'],
   ['mental_effect', 'number'],
   ['hunger_effect', 'number'],
-  ['usable', 'checkbox'],
-  ['consumable', 'checkbox']
+  ['usable', 'checkbox']
 ].forEach(([key, type]) => {
 
   const cell = row.insertCell();
@@ -12517,6 +12399,7 @@ row.classList.toggle(
         : input.value;
 
     updateInlineItem(item, key, value, row);
+    if (key === 'usable') updateInlineItem(item, 'consumable', value, row);
 
   });
 
@@ -12529,14 +12412,19 @@ row.classList.toggle(
     const editBtn = document.createElement('button');
 
     editBtn.textContent = '수정';
-    editBtn.onclick = () => editAdminItem(item);
+    editBtn.disabled = newAdminItems.has(item.id);
+    editBtn.onclick = () => { if (!inlineBusy()) editAdminItem(item); };
 
     const deleteBtn = document.createElement('button');
 
     deleteBtn.textContent = '삭제';
     deleteBtn.style.background = '#6e263d';
     deleteBtn.style.marginLeft = '4px';
-    deleteBtn.onclick = () => deleteAdminItem(item);
+    deleteBtn.onclick = () => {
+      if (inlineBusy()) return;
+      if (newAdminItems.delete(item.id)) { renderAdminItemTable(); updateInlineItemStatus(); }
+      else deleteAdminItem(item);
+    };
 
     actions.append(editBtn, deleteBtn);
 
@@ -12547,7 +12435,7 @@ row.classList.toggle(
   list.appendChild(table);
 
   document.getElementById('admin-item-count').textContent =
-`전체 ${adminItemCache.length}개 / 검색 결과 ${filteredItems.length}개`;
+`전체 ${adminItemCache.length}개 / 검색 결과 ${filteredItems.length}개 / 신규 ${newAdminItems.size}개`;
 
 }
   // 기존 아이템 수정
@@ -12584,116 +12472,6 @@ function closeAdminItemDrops() {
 
 document.getElementById('admin-item-drop-close').onclick =
   closeAdminItemDrops;
-// 신규 아이템 입력 상태로 초기화
-function resetAdminItemEditor() {
-
-  closeAdminItemDrops();
-
-  document.getElementById('admin-item-name').value = '';
-  document.getElementById('admin-item-description').value = '';
-
-  document.getElementById('admin-item-health').value = 0;
-  document.getElementById('admin-item-mental').value = 0;
-  document.getElementById('admin-item-hunger').value = 0;
-
-  document.getElementById('admin-item-usable').checked = false;
-  document.getElementById('admin-item-consumable').checked = false;
-
-  document.getElementById('admin-item-message').textContent =
-    '신규 아이템 등록 중';
-}
-
-document.getElementById('admin-item-new').onclick =
-  resetAdminItemEditor;
-  // 아이템 저장
-async function saveAdminItem() {
-  const message =
-    document.getElementById('admin-item-message');
-
-  const saveBtn =
-    document.getElementById('admin-item-save');
-
-  const item = {
-    name: document.getElementById('admin-item-name')
-      .value.trim(),
-
-    description: document.getElementById('admin-item-description')
-      .value.trim(),
-
-    health_effect: Number(
-      document.getElementById('admin-item-health').value
-    ),
-
-    mental_effect: Number(
-      document.getElementById('admin-item-mental').value
-    ),
-
-    hunger_effect: Number(
-      document.getElementById('admin-item-hunger').value
-    ),
-
-    usable: document.getElementById('admin-item-usable').checked,
-
-    consumable: document.getElementById('admin-item-consumable').checked
-  };
-
-  if (!item.name) {
-    message.textContent = '아이템 이름을 입력해 주세요.';
-    return;
-  }
-
-  const effects = [
-    item.health_effect,
-    item.mental_effect,
-    item.hunger_effect
-  ];
-
-  if (effects.some(value =>
-    !Number.isInteger(value) ||
-    value < -100 ||
-    value > 100
-  )) {
-    message.textContent =
-      '능력치 변화량은 -100부터 100까지의 정수여야 합니다.';
-    return;
-  }
-
-  if (item.usable && !item.consumable &&
-      effects.some(value => value !== 0)) {
-    message.textContent =
-      '능력치에 영향을 주는 사용 가능 아이템은 소모품으로 설정해 주세요.';
-    return;
-  }
-
-  saveBtn.disabled = true;
-  message.textContent = '저장 중...';
-
-  try {
-    let result;
-
-    result = await supabaseClient
-  .from('items')
-  .insert(item)
-  .select('id')
-  .single();
-
- if (result.error) throw result.error;
-
-await loadAdminItems();
-
-resetAdminItemEditor();
-
-message.textContent = '아이템 저장 완료!';
-
-  } catch (error) {
-    message.textContent = '저장 실패: ' + error.message;
-  } finally {
-    saveBtn.disabled = false;
-  }
-}
-
-document.getElementById('admin-item-save').onclick =
-  saveAdminItem;
   // 아이템 삭제
 async function deleteAdminItem(item) {
   const confirmed = confirm(
@@ -12723,7 +12501,7 @@ async function deleteAdminItem(item) {
   }
 
   if (editingItemId === item.id) {
-    resetAdminItemEditor();
+    closeAdminItemDrops();
   }
 adminItemChanges.delete(item.id);
 updateInlineItemStatus();
@@ -15588,10 +15366,10 @@ document.getElementById(
 
   const { rows, errors } = parseBulkItemRows(originalText);
 
-  const { data, error } = await supabaseClient
+  const { data, error } = rows.length ? await supabaseClient
     .from('items')
     .select('name')
-    .in('name', rows.map(row => row.name));
+    .in('name', rows.map(row => row.name)) : {data:[],error:null};
 
   if (input.value !== originalText) return;
 
@@ -15635,7 +15413,7 @@ document.getElementById(
         `${row.name} — 등록 가능\n` +
         `${row.description}\n` +
         `체력 ${row.health_effect} / 정신력 ${row.mental_effect} / 허기 ${row.hunger_effect}\n` +
-        `사용 가능: ${row.usable ? 'O' : 'X'} / 소모성: ${row.consumable ? 'O' : 'X'}`;
+        `사용 가능: ${row.usable ? 'O' : 'X'}`;
 
     }
 
@@ -15672,8 +15450,8 @@ function parseBulkItemRows(text) {
 
     if (
       !Number.isInteger(number) ||
-      number < -2147483648 ||
-      number > 2147483647
+      number < -100 ||
+      number > 100
     ) {
       throw new Error('능력치는 정수로 입력해야 합니다.');
     }
@@ -15693,7 +15471,7 @@ function parseBulkItemRows(text) {
       return false;
     }
 
-    throw new Error('사용 가능·소모성은 O/X로 입력해 주세요.');
+    throw new Error('사용 가능은 O/X로 입력해 주세요.');
 
   }
 
@@ -15717,7 +15495,7 @@ function parseBulkItemRows(text) {
         throw new Error('아이템 이름이 없습니다.');
       }
 
-      if (cols.length > 7) {
+      if (cols.length > 6) {
         throw new Error('입력 항목이 너무 많습니다.');
       }
 
@@ -15728,7 +15506,7 @@ function parseBulkItemRows(text) {
         mental_effect: parseNumber(cols[3]),
         hunger_effect: parseNumber(cols[4]),
         usable: parseBoolean(cols[5]),
-        consumable: parseBoolean(cols[6])
+        consumable: parseBoolean(cols[5])
       });
 
     } catch (error) {
@@ -15750,7 +15528,7 @@ function parseBulkItemRows(text) {
   const message = document.getElementById('admin-item-bulk-message');
   const input = document.getElementById('admin-item-bulk-input');
 
-  if (!bulkItemRows.length || save.disabled) return;
+  if (inlineBusy() || !bulkItemRows.length || save.disabled) return;
 
   const rows = [...bulkItemRows];
   const count = rows.length;
@@ -15761,6 +15539,8 @@ function parseBulkItemRows(text) {
 
   save.disabled = true;
   input.disabled = true;
+  const bulkControls = ['admin-item-bulk-preview','admin-item-bulk-close','admin-item-bulk-open'].map(id => document.getElementById(id));
+  bulkControls.forEach(el => el.disabled = true);
 
   message.textContent = '저장 중...';
 
@@ -15787,6 +15567,7 @@ await loadAdminItems();
   } finally {
 
     input.disabled = false;
+    bulkControls.forEach(el => el.disabled = false);
 
   }
 
@@ -16344,4 +16125,3 @@ checkPlayerAccess();
 
 </body>
 </html>
-
