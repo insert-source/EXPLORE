@@ -1080,6 +1080,80 @@ top: 0;
 #map.location-picking .map-player-tooltip {
   pointer-events: none;
 }
+  /* 플레이어 지도 마커 크기 및 디자인 개선 */
+
+.map-player-group {
+  gap: 5px;
+}
+
+.map-player-entry {
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 5px;
+  background: rgba(20, 17, 20, 0.92);
+}
+
+/* 일반 플레이어 회색 점 */
+
+.map-player-dot {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  background: #b0a3aa;
+}
+
+/* 본인 녹색 점 및 YOU */
+
+.map-player-entry.is-self {
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: #b5dfc5;
+  background: rgba(37, 53, 46, 0.95);
+  border: 1px solid #496356;
+}
+
+.map-player-entry.is-self .map-player-dot {
+  width: 12px;
+  height: 12px;
+  background: #9dc5ae;
+  box-shadow: 0 0 9px rgba(157, 197, 174, 0.7);
+}
+
+/* 그룹 금색 점 및 인원수 */
+
+.map-player-entry.is-group {
+  font-size: 13px;
+  padding: 4px 10px;
+  color: #d9ba82;
+  background: rgba(48, 40, 32, 0.95);
+  border: 1px solid #796342;
+}
+
+.map-player-entry.is-group .map-player-dot {
+  width: 13px;
+  height: 13px;
+  background: #c3a36d;
+  box-shadow: 0 0 8px rgba(195, 163, 109, 0.6);
+}
+
+/* 금색 점 마우스 오버 목록 */
+
+.map-player-tooltip-row {
+  font-size: 12px;
+  padding: 8px 6px;
+  gap: 8px;
+}
+
+.map-player-tooltip-title {
+  font-size: 11px;
+}
+
+.map-player-tooltip-row .map-player-dot {
+  width: 8px;
+  height: 8px;
+}
 </style>
 </head>
 
