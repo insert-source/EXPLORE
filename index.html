@@ -10530,16 +10530,17 @@ p_player_name: loginName,
     p_will: will
   }
 );
-      if (saveError) {
-        if (
-          saveError.message.includes('profiles_player_name_unique') ||
-          saveError.code === '23505'
-        ) {
-          throw new Error('이미 사용 중인 캐릭터 이름이야. 다른 이름을 사용해 줘.');
-        }
+     if (saveError) {
 
-        throw saveError;
-      }
+  await checkPlayerAccess();
+
+  authMessage.textContent =
+    '계정은 생성되었지만 초기 정보 저장에 실패했습니다. ' +
+    '다시 등록해 주세요. (' + saveError.message + ')';
+
+  return;
+
+}
 
     } else {
       result = await supabaseClient.auth.signInWithPassword({
@@ -14236,6 +14237,8 @@ playerNameInput.addEventListener('keydown', event => {
 });
 async function checkPlayerAccess() {
 
+  document.getElementById('will-message').textContent = '';
+
   resetRadio();
 
   closePlayerNameEditor(true);
@@ -14677,13 +14680,23 @@ async function changePlayerStatus(userId, status) {
 
 // 로그아웃
 logoutBtn.onclick = async () => {
-  await supabaseClient.auth.signOut();
-  await checkPlayerAccess();
+
+  const { error } =
+    await supabaseClient.auth.signOut();
+
+  if (error) {
+    alert('로그아웃 실패: ' + error.message);
+  }
+
 };
 
 // 로그인 상태 변경
-supabaseClient.auth.onAuthStateChange(() => {
-  setTimeout(checkPlayerAccess, 0);
+supabaseClient.auth.onAuthStateChange((event) => {
+
+  if (event === 'SIGNED_OUT') {
+    setTimeout(checkPlayerAccess, 0);
+  }
+
 });
 
 // 최초 접속
