@@ -2193,7 +2193,21 @@ function closeLocationDetail() {
 document.getElementById(
   'location-detail-close'
 ).onclick = closeLocationDetail;
+// 상세 정보창 바깥 클릭 시 닫기
+document.addEventListener('pointerdown', e => {
 
+  if (!selectedMapLocation) return;
+
+  // 상세 정보창 내부 클릭은 제외
+  if (locationDetailPanel.contains(e.target)) return;
+
+  // 장소 아이콘 클릭은 제외
+  if (e.target.closest('.map-location')) return;
+
+  // 나머지 영역 클릭 시 닫기
+  closeLocationDetail();
+
+}, true);
 
 // 상세 정보창 내부에서 지도 드래그 방지
 locationDetailPanel.addEventListener(
