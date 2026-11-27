@@ -783,6 +783,7 @@ signupOpen.onclick = () => {
 document.getElementById('auth-close').onclick = () => {
   authModal.style.display = 'none';
 };
+
 // 캐릭터 이름을 내부 인증용 주소로 변환
 async function makePlayerAuthEmail(playerName) {
   const normalizedName = playerName
@@ -799,37 +800,40 @@ async function makePlayerAuthEmail(playerName) {
 
   return `player-${hash}@players.invalid`;
 }
+
 // 회원가입 및 로그인
 authSubmit.onclick = async () => {
- const loginName = authEmail.value.trim();
-const password = authPassword.value;
+  const loginName = authEmail.value.trim();
+  const password = authPassword.value;
+  const passwordConfirm = authPasswordConfirm.value;
 
-if (!loginName) {
-  authMessage.textContent = '캐릭터 이름을 입력해 줘.';
-  return;
-}
-
-// 관리자는 기존 이메일 로그인 유지
-const isAdminLogin =
-  authMode === 'login' &&
-  loginName.toLowerCase() === 'ssuejjang1@gmail.com';
-
-if (
-  authMode === 'signup' &&
-  loginName.toLowerCase() === 'ssuejjang1@gmail.com'
-) {
-  authMessage.textContent = '이 캐릭터 이름은 사용할 수 없어.';
-  return;
-}
-
-const authEmailForSupabase = isAdminLogin
-  ? 'ssuejjang1@gmail.com'
-  : await makePlayerAuthEmail(loginName);
-
-  if (!email || !password) {
-    authMessage.textContent = '이메일과 비밀번호를 입력해 줘.';
+  if (!loginName || !password) {
+    authMessage.textContent = '캐릭터 이름과 비밀번호를 입력해 줘.';
     return;
   }
+
+  // 회원가입 시 비밀번호 확인
+  if (authMode === 'signup' && password !== passwordConfirm) {
+    authMessage.textContent = '비밀번호가 서로 일치하지 않아.';
+    return;
+  }
+
+  // 관리자 로그인
+  const isAdminLogin =
+    authMode === 'login' &&
+    loginName.toLowerCase() === 'ssuejjang1@gmail.com';
+
+  if (
+    authMode === 'signup' &&
+    loginName.toLowerCase() === 'ssuejjang1@gmail.com'
+  ) {
+    authMessage.textContent = '이 캐릭터 이름은 사용할 수 없어.';
+    return;
+  }
+
+  const authEmailForSupabase = isAdminLogin
+    ? 'ssuejjang1@gmail.com'
+    : await makePlayerAuthEmail(loginName);
 
   if (password.length < 6) {
     authMessage.textContent = '비밀번호는 6자 이상이어야 해.';
@@ -842,15 +846,14 @@ const authEmailForSupabase = isAdminLogin
   try {
     let result;
 
-  if (authMode === 'signup') {
-  const health = signupStats.health;
-  const mental = signupStats.mental;
-  const hunger = signupStats.hunger;
-  const item1 = document.getElementById('player-item1').value.trim();
-  const item2 = document.getElementById('player-item2').value.trim();
-  const will = document.getElementById('player-will').value.trim();
+    if (authMode === 'signup') {
+      const health = signupStats.health;
+      const mental = signupStats.mental;
+      const hunger = signupStats.hunger;
 
- 
+      const item1 = document.getElementById('player-item1').value.trim();
+      const item2 = document.getElementById('player-item2').value.trim();
+      const will = document.getElementById('player-will').value.trim();
 
       if (
         health < 0 || health > 100 ||
@@ -859,13 +862,15 @@ const authEmailForSupabase = isAdminLogin
         health + mental + hunger > 100
       ) {
         authMessage.textContent = '수치의 합계는 100 이하여야 해.';
+        authSubmit.disabled = false;
         return;
       }
 
-   result = await supabaseClient.auth.signUp({
-  email: authEmailForSupabase,
-  password
-});
+      result = await supabaseClient.auth.signUp({
+        email: authEmailForSupabase,
+        password
+      });
+
       if (result.error) throw result.error;
 
       if (!result.data.session) {
@@ -874,34 +879,34 @@ const authEmailForSupabase = isAdminLogin
       }
 
       const { error: saveError } = await supabaseClient.rpc(
-  'save_signup_profile',
-  {
-p_player_name: loginName,
-    p_health: signupStats.health,
-    p_mental: signupStats.mental,
-    p_hunger: signupStats.hunger,
-    p_item1: item1,
-    p_item2: item2,
-    p_will: will
-  }
-);
+        'save_signup_profile',
+        {
+          p_player_name: loginName,
+          p_health: health,
+          p_mental: mental,
+          p_hunger: hunger,
+          p_item1: item1,
+          p_item2: item2,
+          p_will: will
+        }
+      );
 
-    if (saveError) {
-  if (
-    saveError.message.includes('profiles_player_name_unique') ||
-    saveError.code === '23505'
-  ) {
-    throw new Error('이미 사용 중인 캐릭터 이름이야. 다른 이름을 사용해 줘.');
-  }
+      if (saveError) {
+        if (
+          saveError.message.includes('profiles_player_name_unique') ||
+          saveError.code === '23505'
+        ) {
+          throw new Error('이미 사용 중인 캐릭터 이름이야. 다른 이름을 사용해 줘.');
+        }
 
-  throw saveError;
-}
+        throw saveError;
+      }
 
     } else {
- result = await supabaseClient.auth.signInWithPassword({
-  email: authEmailForSupabase,
-  password
-});
+      result = await supabaseClient.auth.signInWithPassword({
+        email: authEmailForSupabase,
+        password
+      });
 
       if (result.error) throw result.error;
     }
@@ -911,6 +916,7 @@ p_player_name: loginName,
 
   } catch (error) {
     authMessage.textContent = error.message;
+
   } finally {
     authSubmit.disabled = false;
   }
