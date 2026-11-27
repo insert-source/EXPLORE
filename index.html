@@ -271,6 +271,8 @@ input {
   margin-top: 4px;
   color: #d8cbd0;
   line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .log-type-MOVE {
@@ -5162,6 +5164,399 @@ itemAdminClose.onclick = () => {
 };
   // 관리자 아이템 관리
 let editingItemId = null;
+  // 장소별 아이템 획득 확률 관리
+
+let itemDropRequest = 0;
+let itemDropSaving = false;
+
+const itemDropList =
+  document.getElementById('admin-item-drop-list');
+
+const itemDropSave =
+  document.getElementById('admin-item-drop-save');
+
+const itemDropMessage =
+  document.getElementById('admin-item-drop-message');
+
+
+// 획득 확률 입력창 초기화
+
+function resetAdminItemDrops() {
+
+  itemDropRequest++;
+
+  itemDropList.textContent =
+    '등록된 아이템을 선택해 주세요.';
+
+  itemDropMessage.textContent = '';
+
+  itemDropSave.disabled = true;
+
+}
+
+
+// 장소별 획득 확률 불러오기
+
+async function loadAdminItemDrops(itemId) {
+
+  const requestId = ++itemDropRequest;
+
+  itemDropList.textContent = '획득 확률을 불러오는 중...';
+
+  itemDropMessage.textContent = '';
+
+  itemDropSave.disabled = true;
+
+  try {
+
+    const [locationResult, dropResult] =
+      await Promise.all([
+
+        supabaseClient
+          .from('map_locations')
+          .select('id, name, is_visible, is_base')
+          .order('name'),
+
+        supabaseClient
+          .from('location_item_drops')
+          .select('location_id, item_id, drop_chance')
+
+      ]);
+
+    if (
+      requestId !== itemDropRequest ||
+      editingItemId !== itemId
+    ) return;
+
+    if (locationResult.error)
+      throw locationResult.error;
+
+    if (dropResult.error)
+      throw dropResult.error;
+
+    const locations = locationResult.data || [];
+    const drops = dropResult.data || [];
+
+    itemDropList.innerHTML = '';
+
+    if (!locations.length) {
+
+      itemDropList.textContent =
+        '등록된 장소가 없습니다.';
+
+      return;
+
+    }
+
+
+    locations.forEach(location => {
+
+      const locationDrops = drops.filter(
+        drop => drop.location_id === location.id
+      );
+
+      const currentDrop = locationDrops.find(
+        drop => drop.item_id === itemId
+      );
+
+      const currentChance =
+        currentDrop?.drop_chance || 0;
+
+      const otherTotal = locationDrops
+        .filter(drop => drop.item_id !== itemId)
+        .reduce(
+          (sum, drop) => sum + drop.drop_chance,
+          0
+        );
+
+
+      const row = document.createElement('div');
+
+      row.className = 'item-drop-row';
+
+
+      const header = document.createElement('div');
+
+      header.className = 'item-drop-header';
+
+
+      const name = document.createElement('div');
+
+      name.className = 'item-drop-name';
+
+      name.textContent =
+        location.name +
+        (location.is_base ? ' [BASE]' : '') +
+        (!location.is_visible ? ' [비공개]' : '');
+
+
+      const inputWrap = document.createElement('div');
+
+      inputWrap.className = 'item-drop-input';
+
+
+      const input = document.createElement('input');
+
+      input.type = 'number';
+
+      input.min = '0';
+
+      input.max = String(
+        Math.max(0, 100 - otherTotal)
+      );
+
+      input.step = '1';
+
+      input.value = currentChance;
+
+      input.className = 'item-drop-chance';
+
+      input.dataset.locationId = location.id;
+
+      input.dataset.otherTotal = otherTotal;
+
+      input.dataset.originalChance = currentChance;
+
+
+      const percent = document.createElement('span');
+
+      percent.textContent = '%';
+
+
+      inputWrap.append(input, percent);
+
+      header.append(name, inputWrap);
+
+
+      const meta = document.createElement('div');
+
+      meta.className = 'item-drop-meta';
+
+
+      row.append(header, meta);
+
+      itemDropList.appendChild(row);
+
+
+      input.addEventListener(
+        'input',
+        updateAdminItemDropPreview
+      );
+
+    });
+
+    updateAdminItemDropPreview();
+
+  } catch (error) {
+
+    if (requestId !== itemDropRequest) return;
+
+    itemDropList.textContent =
+      '조회 실패: ' + error.message;
+
+  }
+
+}
+
+
+// 확률 합계 실시간 계산
+
+function updateAdminItemDropPreview() {
+
+  const inputs = itemDropList.querySelectorAll(
+    '.item-drop-chance'
+  );
+
+  let invalid = false;
+
+  inputs.forEach(input => {
+
+    const chance = Number(input.value);
+
+    const otherTotal =
+      Number(input.dataset.otherTotal);
+
+    const total = otherTotal + chance;
+
+    const meta = input
+      .closest('.item-drop-row')
+      .querySelector('.item-drop-meta');
+
+    const valid =
+      input.value.trim() !== '' &&
+      Number.isInteger(chance) &&
+      chance >= 0 &&
+      chance <= 100 &&
+      total <= 100;
+
+
+    if (!valid) {
+
+      invalid = true;
+
+      meta.classList.add('is-invalid');
+
+      meta.textContent =
+        `설정 가능 범위: 0~${Math.max(0, 100 - otherTotal)}%`;
+
+    } else {
+
+      meta.classList.remove('is-invalid');
+
+      meta.textContent =
+        `다른 아이템: ${otherTotal}%` +
+        ` / 전체 획득: ${total}%` +
+        ` / 실패: ${100 - total}%`;
+
+    }
+
+  });
+
+
+  itemDropSave.disabled =
+    invalid ||
+    itemDropSaving ||
+    !editingItemId ||
+    !inputs.length;
+
+}
+
+
+// 장소별 획득 확률 저장
+
+async function saveAdminItemDrops() {
+
+  if (!editingItemId || itemDropSaving) return;
+
+  const itemId = editingItemId;
+
+  const requestId = itemDropRequest;
+
+  const inputs = Array.from(
+    itemDropList.querySelectorAll(
+      '.item-drop-chance'
+    )
+  );
+
+  const rows = [];
+
+  for (const input of inputs) {
+
+    const chance = Number(input.value);
+
+    const otherTotal =
+      Number(input.dataset.otherTotal);
+
+    if (
+      input.value.trim() === '' ||
+      !Number.isInteger(chance) ||
+      chance < 0 ||
+      chance > 100 ||
+      chance + otherTotal > 100
+    ) {
+
+      itemDropMessage.textContent =
+        '획득 확률을 다시 확인해 주세요.';
+
+      return;
+
+    }
+
+
+    // 변경된 확률만 저장
+
+    if (
+      chance !== Number(input.dataset.originalChance)
+    ) {
+
+      rows.push({
+
+        location_id: input.dataset.locationId,
+
+        item_id: itemId,
+
+        drop_chance: chance
+
+      });
+
+    }
+
+  }
+
+
+  if (!rows.length) {
+
+    itemDropMessage.textContent =
+      '변경된 획득 확률이 없습니다.';
+
+    return;
+
+  }
+
+
+  itemDropSaving = true;
+
+  itemDropSave.disabled = true;
+
+  inputs.forEach(input => {
+    input.disabled = true;
+  });
+
+  itemDropMessage.textContent = '저장 중...';
+
+
+  try {
+
+    const { error } = await supabaseClient
+      .from('location_item_drops')
+      .upsert(rows, {
+        onConflict: 'location_id,item_id'
+      });
+
+    if (error) throw error;
+
+
+    if (
+      editingItemId === itemId &&
+      requestId === itemDropRequest
+    ) {
+
+      await loadAdminItemDrops(itemId);
+
+      if (editingItemId === itemId) {
+
+        itemDropMessage.textContent =
+          '획득 확률 저장 완료!';
+
+      }
+
+    }
+
+  } catch (error) {
+
+    if (requestId === itemDropRequest) {
+
+      itemDropMessage.textContent =
+        '저장 실패: ' + error.message;
+
+    }
+
+  } finally {
+
+    itemDropSaving = false;
+
+    inputs.forEach(input => {
+      input.disabled = false;
+    });
+
+    updateAdminItemDropPreview();
+
+  }
+
+}
+
+
+itemDropSave.onclick = saveAdminItemDrops;
 
 // 전체 아이템 목록 불러오기
 async function loadAdminItems() {
@@ -5251,6 +5646,8 @@ async function loadAdminItems() {
 function editAdminItem(item) {
   editingItemId = item.id;
 
+  loadAdminItemDrops(item.id);
+
   document.getElementById('admin-item-name').value =
     item.name;
 
@@ -5282,6 +5679,8 @@ function editAdminItem(item) {
 // 신규 아이템 입력 상태로 초기화
 function resetAdminItemEditor() {
   editingItemId = null;
+
+  resetAdminItemDrops();
 
   document.getElementById('admin-item-name').value = '';
   document.getElementById('admin-item-description').value = '';
@@ -5380,13 +5779,16 @@ async function saveAdminItem() {
         .single();
     }
 
-    if (result.error) throw result.error;
+ if (result.error) throw result.error;
 
-    resetAdminItemEditor();
+await loadAdminItems();
 
-    await loadAdminItems();
+editAdminItem({
+  ...item,
+  id: result.data.id
+});
 
-    message.textContent = '아이템 저장 완료!';
+message.textContent = '아이템 저장 완료!';
 
   } catch (error) {
     message.textContent = '저장 실패: ' + error.message;
