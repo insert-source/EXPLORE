@@ -10047,7 +10047,7 @@ const authSwitch = document.getElementById('auth-switch');
 
 // 로그인 창
 loginOpen.onclick = () => {
-
+authEmail.readOnly = false;
   authPassword.style.display = '';
   authPasswordConfirm.style.display = '';
   authSwitch.style.display = '';
@@ -10066,7 +10066,7 @@ loginOpen.onclick = () => {
 
 // 회원가입 창
 signupOpen.onclick = () => {
-
+authEmail.readOnly = false;
   authPassword.style.display = '';
   authPasswordConfirm.style.display = '';
   authSwitch.style.display = '';
@@ -10095,18 +10095,24 @@ authSwitch.onclick = () => {
 
 };
 // 관리자 캐릭터 초기 설정
-function openAdminCharacterSetup() {
+function openAdminCharacterSetup(
+  isAdmin = true,
+  playerName = ''
+) {
 
   signupOpen.click();
 
-  authMode = 'admin_setup';
+ authMode = isAdmin
+  ? 'admin_setup'
+  : 'player_setup';
 
   authTitle.textContent = 'CHARACTER SETUP';
   authSubmit.textContent = '캐릭터 등록';
   authMessage.textContent = '';
 
-  authEmail.value = '';
-  authEmail.placeholder = '캐릭터 이름';
+authEmail.value = playerName;
+authEmail.placeholder = '캐릭터 이름';
+authEmail.readOnly = !isAdmin;
 
   authPassword.value = '';
   authPasswordConfirm.value = '';
@@ -10162,7 +10168,10 @@ authSubmit.onclick = async () => {
 
   // 관리자 캐릭터 초기 설정
 
-if (authMode === 'admin_setup') {
+if (
+  authMode === 'admin_setup' ||
+  authMode === 'player_setup'
+) {
 
   const playerName = authEmail.value.trim();
 
@@ -10228,12 +10237,16 @@ if (authMode === 'admin_setup') {
 
       const user = sessionData.session?.user;
 
-      if (
-        !user ||
-        (user.email || '').toLowerCase() !== ADMIN_EMAIL
-      ) {
-        throw new Error('관리자 로그인이 필요합니다.');
-      }
+   if (!user) {
+  throw new Error('로그인이 필요합니다.');
+}
+
+if (
+  authMode === 'admin_setup' &&
+  (user.email || '').toLowerCase() !== ADMIN_EMAIL
+) {
+  throw new Error('관리자 로그인이 필요합니다.');
+}
 
       const { error } = await supabaseClient.rpc(
         'save_signup_profile',
