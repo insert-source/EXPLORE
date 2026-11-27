@@ -937,6 +937,56 @@ top: 0;
   background: #c3a36d;
   box-shadow: 0 0 6px rgba(195, 163, 109, 0.5);
 }
+  /* 전체 플레이어 위치 표시 */
+
+#map-player-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.map-player-group {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  user-select: none;
+}
+
+.map-player-entry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 2px 5px;
+  background: rgba(20, 17, 20, 0.85);
+  border-radius: 3px;
+  white-space: nowrap;
+  color: #bcaab2;
+  font-size: 10px;
+}
+
+.map-player-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #998c92;
+}
+
+.map-player-entry.is-self {
+  color: #9dc5ae;
+  font-weight: bold;
+}
+
+.map-player-entry.is-self .map-player-dot {
+  background: #9dc5ae;
+  box-shadow: 0 0 6px #789184;
+}
 </style>
 </head>
 
@@ -2184,28 +2234,6 @@ function updatePlayerMapPosition() {
 
   playerMapPosition.style.display = 'none';
 
-  if (!playerMovement?.current_location_id) return;
-
-  const location = mapLocations.find(
-    location =>
-      location.id === playerMovement.current_location_id
-  );
-
-  if (!location) return;
-
-  const size = 50 * scale;
-
-  const positionX = x + location.x * size;
-  const positionY = y + location.y * size;
-
-  playerMapPosition.style.left =
-    `${positionX}px`;
-
-  playerMapPosition.style.top =
-    `${positionY + 30}px`;
-
-  playerMapPosition.style.display = 'flex';
-
 }
 
 
@@ -2251,6 +2279,249 @@ async function loadPlayerMovement() {
   updatePlayerMapPosition();
 
 }
+  // ========================================
+// 전체 플레이어 지도 위치 공유
+// ========================================
+
+let mapPlayers = [];
+let mapPlayersRequest = 0;
+let mapPlayersTimer = null;
+let mapCurrentUserId = null;
+
+const mapPlayerLayer = document.createElement('div');
+
+mapPlayerLayer.id = 'map-player-layer';
+
+map.appendChild(mapPlayerLayer);
+
+
+// 전체 플레이어 위치 조회
+
+async function loadMapPlayers() {
+
+  const requestId = ++mapPlayersRequest;
+
+  const { data: sessionData } =
+    await supabaseClient.auth.getSession();
+
+  const user = sessionData.session?.user;
+
+  if (!user || requestId !== mapPlayersRequest) return;
+
+  const { data, error } = await supabaseClient.rpc(
+    'get_map_players'
+  );
+
+  if (requestId !== mapPlayersRequest) return;
+
+  if (error) {
+
+    mapPlayers = [];
+    mapPlayerLayer.innerHTML = '';
+
+    console.error('플레이어 위치 조회 실패:', error);
+
+    return;
+
+  }
+
+  mapCurrentUserId = user.id;
+
+  mapPlayers = data || [];
+
+  renderMapPlayers();
+
+}
+
+
+// 플레이어 위치 표시
+
+function renderMapPlayers() {
+
+  mapPlayerLayer.innerHTML = '';
+
+  const groups = new Map();
+
+  mapPlayers.forEach(player => {
+
+    const locationId = player.current_location_id;
+
+    if (!groups.has(locationId)) {
+
+      groups.set(locationId, []);
+
+    }
+
+    groups.get(locationId).push(player);
+
+  });
+
+
+  groups.forEach((players, locationId) => {
+
+    const location = mapLocations.find(
+      location => location.id === locationId
+    );
+
+    if (!location) return;
+
+    const group = document.createElement('div');
+
+    group.className = 'map-player-group';
+
+    group.dataset.x = location.x;
+    group.dataset.y = location.y;
+
+
+    // 3명 이상이면 금색 점 하나로 표시
+
+    if (players.length >= 3) {
+
+      const entry = document.createElement('div');
+
+      entry.className = 'map-player-entry is-group';
+
+      const dot = document.createElement('span');
+
+      dot.className = 'map-player-dot';
+
+      const count = document.createElement('span');
+
+      count.textContent = players.length;
+
+      entry.append(dot, count);
+
+      group.appendChild(entry);
+
+      mapPlayerLayer.appendChild(group);
+
+      return;
+
+    }
+
+
+    // 본인을 가장 위에 표시
+
+    players.sort((a, b) => {
+
+      const aSelf = a.user_id === mapCurrentUserId;
+      const bSelf = b.user_id === mapCurrentUserId;
+
+      if (aSelf !== bSelf) return aSelf ? -1 : 1;
+
+      return (a.player_name || '').localeCompare(
+        b.player_name || '',
+        'ko'
+      );
+
+    });
+
+
+    // 2명 이하이면 개별 표시
+
+    players.forEach(player => {
+
+      const isSelf =
+        player.user_id === mapCurrentUserId;
+
+      const entry = document.createElement('div');
+
+      entry.className = 'map-player-entry';
+
+      if (isSelf) {
+
+        entry.classList.add('is-self');
+
+      }
+
+      const dot = document.createElement('span');
+
+      dot.className = 'map-player-dot';
+
+      const name = document.createElement('span');
+
+      name.textContent = isSelf
+        ? 'YOU'
+        : player.player_name || '이름 미등록';
+
+      entry.append(dot, name);
+
+      group.appendChild(entry);
+
+    });
+
+    mapPlayerLayer.appendChild(group);
+
+  });
+
+  updateMapPlayerPositions();
+
+}
+
+
+// 지도 좌표에 맞춰 위치 갱신
+
+function updateMapPlayerPositions() {
+
+  const size = 50 * scale;
+
+  mapPlayerLayer
+    .querySelectorAll('.map-player-group')
+    .forEach(group => {
+
+      const positionX =
+        x + Number(group.dataset.x) * size;
+
+      const positionY =
+        y + Number(group.dataset.y) * size;
+
+      group.style.left = `${positionX}px`;
+
+      group.style.top = `${positionY + 30}px`;
+
+    });
+
+}
+
+
+// 자동 갱신 시작
+
+function startMapPlayersRefresh() {
+
+  stopMapPlayersRefresh();
+
+  loadMapPlayers();
+
+  mapPlayersTimer = setInterval(() => {
+
+    loadMapPlayers();
+
+  }, 5000);
+
+}
+
+
+// 자동 갱신 종료
+
+function stopMapPlayersRefresh() {
+
+  if (mapPlayersTimer !== null) {
+
+    clearInterval(mapPlayersTimer);
+
+    mapPlayersTimer = null;
+
+  }
+
+  mapPlayersRequest++;
+
+  mapPlayers = [];
+
+  mapCurrentUserId = null;
+
+  mapPlayerLayer.innerHTML = '';
+
+}
 function updateMap() {
 
   const size = 50 * scale;
@@ -2261,11 +2532,13 @@ function updateMap() {
   coordinates.textContent =
     `X : ${Math.round(-x / size)} / Y : ${Math.round(-y / size)} / ZOOM : ${Math.round(scale * 100)}%`;
 
-      updateMapLocationPositions();
+       updateMapLocationPositions();
 
   updateLocationDetailPosition();
 
   updatePlayerMapPosition();
+
+  updateMapPlayerPositions();
 
 }
 // 장소 아이콘 위치 갱신
@@ -2328,6 +2601,10 @@ async function loadMapLocations() {
   renderMapLocations();
 
   await loadPlayerMovement();
+
+  if (requestId !== mapLocationRequest) return;
+
+  startMapPlayersRefresh();
 
 }
 
@@ -5238,6 +5515,10 @@ playerMovementRequest++;
 playerMovement = null;
 
 updatePlayerMapPosition();
+
+mapLocationRequest++;
+
+stopMapPlayersRefresh();
   if (!user) {
     document.getElementById('user-status').textContent = 'GUEST';
     loginOpen.style.display = 'inline-block';
