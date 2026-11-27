@@ -2187,13 +2187,57 @@ async function loadAdminUsers() {
       const buttons = document.createElement('div');
 
       const approve = document.createElement('button');
-      approve.textContent = '승인';
+      approve.textContent = player.status === 'approved'
+  ? '승인 완료'
+  : '승인';
+
+approve.style.background = player.status === 'approved'
+  ? '#36594b'
+  : '#211a1e';
+
+approve.style.color = player.status === 'approved'
+  ? '#b5dfc5'
+  : '#998c92';
+
+approve.style.border = player.status === 'approved'
+  ? '1px solid #789184'
+  : '1px solid #49303a';
+
+approve.style.opacity = player.status === 'rejected'
+  ? '0.4'
+  : '1';
+
+approve.style.fontWeight = player.status === 'approved'
+  ? 'bold'
+  : 'normal';
       approve.onclick = () => changePlayerStatus(
         player.user_id, 'approved'
       );
 
       const reject = document.createElement('button');
-      reject.textContent = '거절';
+    reject.textContent = player.status === 'rejected'
+  ? '거절 완료'
+  : '거절';
+
+reject.style.background = player.status === 'rejected'
+  ? '#6e263d'
+  : '#211a1e';
+
+reject.style.color = player.status === 'rejected'
+  ? '#f2b4c5'
+  : '#998c92';
+
+reject.style.border = player.status === 'rejected'
+  ? '1px solid #9b304d'
+  : '1px solid #49303a';
+
+reject.style.opacity = player.status === 'approved'
+  ? '0.4'
+  : '1';
+
+reject.style.fontWeight = player.status === 'rejected'
+  ? 'bold'
+  : 'normal';
       reject.style.marginLeft = '6px';
       reject.onclick = () => changePlayerStatus(
         player.user_id, 'rejected'
