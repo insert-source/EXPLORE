@@ -5652,7 +5652,7 @@ async function loadAdminUsers() {
 
   const { data, error } = await supabaseClient
     .from('profiles')
-   .select('user_id, email, player_name, status, created_at')
+  .select('user_id, email, player_name, status, created_at, pvp_enabled')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -5695,8 +5695,29 @@ async function loadAdminUsers() {
     status.textContent = '상태: ' + player.status;
     status.style.cssText = 'font-size:12px;color:#bd6b83;margin-top:5px;';
 
-    info.append(email, status);
-    row.appendChild(info);
+   info.append(email, status);
+
+// PVP 동의 상태 표시
+if (player.email.toLowerCase() !== ADMIN_EMAIL) {
+
+  const pvpStatus = document.createElement('div');
+
+  pvpStatus.textContent = player.pvp_enabled
+    ? 'PVP : ENABLED / 동의'
+    : 'PVP : DISABLED / 비동의';
+
+  pvpStatus.style.cssText = `
+    font-size:11px;
+    margin-top:5px;
+    font-weight:bold;
+    color:${player.pvp_enabled ? '#9dc5ae' : '#998c92'};
+  `;
+
+  info.appendChild(pvpStatus);
+
+}
+
+row.appendChild(info);
 
     if (player.email.toLowerCase() !== ADMIN_EMAIL) {
       const buttons = document.createElement('div');
@@ -5771,7 +5792,36 @@ deleteBtn.onclick = () => {
     player.player_name || '이름 미등록'
   );
 };
-buttons.append(approve, reject, deleteBtn);
+// PVP 동의 여부 변경 버튼
+
+const pvpBtn = document.createElement('button');
+
+pvpBtn.textContent = player.pvp_enabled
+  ? 'PVP ON'
+  : 'PVP OFF';
+
+pvpBtn.style.background = player.pvp_enabled
+  ? '#36594b'
+  : '#211a1e';
+
+pvpBtn.style.color = player.pvp_enabled
+  ? '#b5dfc5'
+  : '#998c92';
+
+pvpBtn.style.border = player.pvp_enabled
+  ? '1px solid #789184'
+  : '1px solid #49303a';
+
+pvpBtn.style.marginLeft = '6px';
+pvpBtn.style.fontWeight = 'bold';
+
+pvpBtn.onclick = () => changePlayerPvp(
+  player.user_id,
+  player.player_name || '이름 미등록',
+  player.pvp_enabled
+);
+
+buttons.append(approve, reject, pvpBtn, deleteBtn);
       row.appendChild(buttons);
     }
 
@@ -5808,6 +5858,52 @@ async function deletePlayer(userId, playerName) {
   } catch (error) {
     alert('삭제 실패: ' + error.message);
   }
+}
+  // 관리자 PVP 동의 여부 변경
+
+async function changePlayerPvp(
+  userId,
+  playerName,
+  currentPvp
+) {
+
+  const nextPvp = !currentPvp;
+
+  const confirmed = confirm(
+    `${playerName} 캐릭터의 PVP 설정을 변경하시겠습니까?\n\n` +
+    `현재 상태 : ${currentPvp ? '동의' : '비동의'}\n` +
+    `변경 상태 : ${nextPvp ? '동의' : '비동의'}`
+  );
+
+  if (!confirmed) return;
+
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .update({
+      pvp_enabled: nextPvp
+    })
+    .eq('user_id', userId)
+    .select('user_id, pvp_enabled')
+    .single();
+
+  if (error || !data) {
+
+    alert(
+      'PVP 설정 변경 실패: ' +
+      (error?.message || '변경된 캐릭터가 없습니다.')
+    );
+
+    return;
+
+  }
+
+  alert(
+    `${playerName} 캐릭터의 PVP 설정이 ` +
+    `${data.pvp_enabled ? '동의' : '비동의'} 상태로 변경되었습니다.`
+  );
+
+  await loadAdminUsers();
+
 }
 async function changePlayerStatus(userId, status) {
   const action = status === 'approved' ? '승인' : '거절';
