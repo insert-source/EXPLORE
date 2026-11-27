@@ -304,30 +304,14 @@ input {
   <button type="button" id="logout-btn" style="display:none;">로그아웃</button>
 </div>
 </header>
-  <div id="auth-modal" style="
-  display:none;
-  position:fixed;
-  inset:0;
-  z-index:1000;
-  background:rgba(0,0,0,0.8);
-  justify-content:center;
-  align-items:center;
-">
-  <div style="
-    width:320px;
-    padding:25px;
-    background:#21191d;
-    border:1px solid #854057;
-    border-radius:8px;
-  ">
-    <h3 id="auth-title" style="color:#bd6b83;">LOGIN</h3>
 
+<!-- LOGIN / SIGNUP MODAL -->
 <div id="auth-modal" style="
   display:none;
   position:fixed;
   inset:0;
-  z-index:9999;
-  background:rgba(0,0,0,.88);
+  z-index:99999;
+  background:rgba(0,0,0,.9);
   align-items:center;
   justify-content:center;
   padding:20px;
@@ -343,9 +327,8 @@ input {
     padding:30px;
     background:#111012;
     border:1px solid #713348;
-    box-shadow:0 0 35px rgba(120,35,65,.2);
+    box-shadow:0 0 35px rgba(120,35,65,.25);
     color:#ddd;
-    position:relative;
   ">
 
     <div style="
@@ -362,64 +345,55 @@ input {
       margin:0 0 8px;
     ">SYSTEM ACCESS</h2>
 
-    <p style="
-      color:#777;
-      font-size:12px;
-      margin-bottom:25px;
-    ">생존자 관리 시스템에 접속합니다.</p>
+    <p style="color:#777;font-size:12px;margin-bottom:25px;">
+      생존자 관리 시스템에 접속합니다.
+    </p>
 
-    <div style="
-      border-top:1px solid #49303a;
-      margin-bottom:20px;
-    "></div>
+    <div style="border-top:1px solid #49303a;margin-bottom:20px;"></div>
 
-    <label style="font-size:12px;color:#bd8294;">캐릭터 이름</label>
+    <label>캐릭터 이름</label>
     <input id="auth-email" type="text"
       placeholder="캐릭터 이름"
       style="
-        width:100%;
-        box-sizing:border-box;
-        padding:13px;
-        margin:8px 0 17px;
-        background:#1b191b;
-        color:#eee;
-        border:1px solid #49303a;
-        outline:none;
+        width:100%;box-sizing:border-box;padding:13px;
+        margin:8px 0 17px;background:#1b191b;
+        color:#eee;border:1px solid #49303a;
       ">
 
-    <label style="font-size:12px;color:#bd8294;">비밀번호</label>
+    <label>비밀번호</label>
     <input id="auth-password" type="password"
       placeholder="비밀번호"
       style="
-        width:100%;
-        box-sizing:border-box;
-        padding:13px;
-        margin:8px 0 17px;
-        background:#1b191b;
-        color:#eee;
-        border:1px solid #49303a;
-        outline:none;
+        width:100%;box-sizing:border-box;padding:13px;
+        margin:8px 0 17px;background:#1b191b;
+        color:#eee;border:1px solid #49303a;
       ">
 
+    <!-- 회원가입 전용 -->
     <div id="signup-fields" style="display:none;">
 
       <div style="border-top:1px solid #49303a;margin:10px 0 20px;"></div>
 
-      <h3 style="color:#bd6b83;font-size:14px;letter-spacing:2px;">
+      <h3 style="color:#bd6b83;font-size:14px;">
         SURVIVOR REGISTRATION
       </h3>
 
+      <label>플레이어 이름</label>
+      <input id="player-name" type="text"
+        placeholder="플레이어 이름"
+        style="width:100%;box-sizing:border-box;padding:11px;margin:8px 0 15px;background:#1b191b;color:#eee;border:1px solid #49303a;">
+
       <label>체력</label>
       <input id="player-health" type="number" min="0" max="100" value="0"
-        style="width:100%;box-sizing:border-box;margin:8px 0 15px;padding:11px;background:#1b191b;color:#eee;border:1px solid #49303a;">
+        style="width:100%;box-sizing:border-box;padding:11px;margin:8px 0 15px;background:#1b191b;color:#eee;border:1px solid #49303a;">
 
       <label>정신력</label>
       <input id="player-mental" type="number" min="0" max="100" value="0"
-        style="width:100%;box-sizing:border-box;margin:8px 0 15px;padding:11px;background:#1b191b;color:#eee;border:1px solid #49303a;">
+        style="width:100%;box-sizing:border-box;padding:11px;margin:8px 0 15px;background:#1b191b;color:#eee;border:1px solid #49303a;">
 
       <label>허기</label>
       <input id="player-hunger" type="number" min="0" max="100" value="0"
-        style="width:100%;box-sizing:border-box;margin:8px 0 15px;padding:11px;background:#1b191b;color:#eee;border:1px solid #49303a;">
+        style="width:100%;box-sizing:border-box;padding:11px;margin:8px 0 15px;background:#1b191b;color:#eee;border:1px solid #49303a;">
 
       <p style="font-size:11px;color:#bd6b83;">
         ※ 세 수치의 합계는 100을 초과할 수 없습니다.
@@ -428,43 +402,39 @@ input {
       <label>초기 보유 아이템 1</label>
       <input id="player-item1" type="text"
         placeholder="아이템 이름"
-        style="width:100%;box-sizing:border-box;margin:8px 0 15px;padding:11px;background:#1b191b;color:#eee;border:1px solid #49303a;">
+        style="width:100%;box-sizing:border-box;padding:11px;margin:8px 0 15px;background:#1b191b;color:#eee;border:1px solid #49303a;">
 
       <label>초기 보유 아이템 2</label>
       <input id="player-item2" type="text"
         placeholder="아이템 이름"
-        style="width:100%;box-sizing:border-box;margin:8px 0 20px;padding:11px;background:#1b191b;color:#eee;border:1px solid #49303a;">
+        style="width:100%;box-sizing:border-box;padding:11px;margin:8px 0 20px;background:#1b191b;color:#eee;border:1px solid #49303a;">
 
       <label style="color:#bd6b83;">LAST WILL / 유서</label>
       <textarea id="player-will"
         placeholder="마지막으로 남기고 싶은 말을 작성하세요..."
         rows="6"
-        style="width:100%;box-sizing:border-box;resize:vertical;margin-top:8px;padding:13px;background:#1b191b;color:#eee;border:1px solid #49303a;font-family:inherit;"></textarea>
+        style="
+          width:100%;box-sizing:border-box;resize:vertical;
+          margin:8px 0 15px;padding:13px;
+          background:#1b191b;color:#eee;
+          border:1px solid #49303a;font-family:inherit;
+        "></textarea>
 
     </div>
 
     <button id="auth-submit" style="
-      width:100%;
-      padding:14px;
-      margin-top:20px;
-      background:#713348;
-      color:white;
-      border:1px solid #a85b75;
-      letter-spacing:2px;
-      cursor:pointer;
+      width:100%;padding:13px;
+      background:#713348;color:white;
+      border:1px solid #a05b72;cursor:pointer;
     ">로그인</button>
 
     <p id="auth-message" style="font-size:12px;color:#d88ca3;"></p>
 
     <button id="auth-close" style="
-      width:100%;
-      padding:11px;
-      margin-top:5px;
-      background:transparent;
-      color:#888;
-      border:1px solid #393337;
-      cursor:pointer;
-    ">접속 취소</button>
+      width:100%;margin-top:8px;padding:11px;
+      background:transparent;color:#aaa;
+      border:1px solid #49303a;cursor:pointer;
+    ">닫기</button>
 
   </div>
 </div>
