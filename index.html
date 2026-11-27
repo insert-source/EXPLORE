@@ -322,6 +322,94 @@ input {
     font-size: 13px;
   }
 }
+  /* 관리자 능력치 관리 */
+
+.admin-stat-card {
+  background: #171416;
+  border: 1px solid #49303a;
+  border-radius: 5px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.admin-stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: #d8cbd0;
+}
+
+.admin-stat-track {
+  height: 8px;
+  background: #35282e;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.admin-stat-fill {
+  height: 100%;
+  width: 0%;
+  background: #789184;
+  transition: width 0.15s, background-color 0.15s;
+}
+
+.admin-stat-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.admin-stat-controls button {
+  flex: 1;
+  padding: 8px 4px;
+  font-size: 12px;
+}
+
+.admin-stat-minus {
+  color: #d88ca3;
+  background: #352129;
+  border: 1px solid #653448;
+}
+
+.admin-stat-plus {
+  color: #a9c6b5;
+  background: #25352e;
+  border: 1px solid #496356;
+}
+
+.admin-stat-input {
+  width: 65px;
+  min-width: 0;
+  text-align: center;
+  padding: 8px 4px;
+  font-size: 15px;
+  font-weight: bold;
+  color: #d8cbd0;
+  background: #141114;
+  border: 1px solid #49303a;
+  border-radius: 4px;
+}
+
+.admin-stat-input::-webkit-inner-spin-button,
+.admin-stat-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.admin-stat-input {
+  appearance: textfield;
+}
+
+.admin-stat-change {
+  margin-top: 10px;
+  font-size: 11px;
+  text-align: right;
+  color: #998c92;
+}
 </style>
 </head>
 
@@ -337,6 +425,9 @@ input {
   <button type="button" id="admin-open" style="display:none;">가입 관리</button>
   <button id="item-admin-open" style="display:none;">
   아이템 관리
+</button>
+  <button id="stat-admin-open" style="display:none;">
+  능력치 관리
 </button>
   <button type="button" id="logout-btn" style="display:none;">로그아웃</button>
 </div>
@@ -692,6 +783,265 @@ input {
 
   </div>
 </div>
+  <!-- 관리자 능력치 관리 -->
+<div id="stat-admin-panel"
+     style="
+       display:none;
+       position:fixed;
+       inset:0;
+       z-index:9999;
+       background:rgba(0,0,0,0.8);
+       align-items:center;
+       justify-content:center;
+       padding:20px;
+       box-sizing:border-box;
+     ">
+
+  <div style="
+    width:100%;
+    max-width:550px;
+    max-height:85vh;
+    overflow-y:auto;
+    background:#211a1e;
+    border:1px solid #49303a;
+    border-radius:6px;
+    padding:20px;
+    box-sizing:border-box;
+  ">
+
+    <!-- 팝업 제목 -->
+    <div style="
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:20px;
+    ">
+      <div class="widget-title">
+        STATUS MANAGEMENT
+      </div>
+
+      <button id="stat-admin-close">
+        닫기
+      </button>
+    </div>
+
+    <!-- 플레이어 선택 -->
+    <div class="widget" style="margin-bottom:12px;">
+
+      <div class="widget-title">
+        PLAYER SELECT
+      </div>
+
+      <select id="admin-stat-player"
+              style="width:100%;box-sizing:border-box;">
+        <option value="">플레이어 선택</option>
+      </select>
+
+    </div>
+
+    <!-- 능력치 조정 영역 -->
+    <div id="admin-stat-editor" style="display:none;">
+
+      <!-- 체력 -->
+      <div class="admin-stat-card">
+
+        <div class="admin-stat-header">
+          <span>HEALTH / 체력</span>
+          <span id="admin-health-display">0 / 100</span>
+        </div>
+
+        <div class="admin-stat-track">
+          <div class="admin-stat-fill"
+               id="admin-health-fill"></div>
+        </div>
+
+        <div class="admin-stat-controls">
+
+          <button class="admin-stat-minus"
+                  data-stat="health" data-delta="-10">
+            -10
+          </button>
+
+          <button class="admin-stat-minus"
+                  data-stat="health" data-delta="-1">
+            -1
+          </button>
+
+          <input type="number"
+                 class="admin-stat-input"
+                 id="admin-health-input"
+                 min="0" max="100" value="0">
+
+          <button class="admin-stat-plus"
+                  data-stat="health" data-delta="1">
+            +1
+          </button>
+
+          <button class="admin-stat-plus"
+                  data-stat="health" data-delta="10">
+            +10
+          </button>
+
+        </div>
+
+        <div class="admin-stat-change"
+             id="admin-health-change">
+          변동 없음
+        </div>
+
+      </div>
+
+      <!-- 정신력 -->
+      <div class="admin-stat-card">
+
+        <div class="admin-stat-header">
+          <span>MENTAL / 정신력</span>
+          <span id="admin-mental-display">0 / 100</span>
+        </div>
+
+        <div class="admin-stat-track">
+          <div class="admin-stat-fill"
+               id="admin-mental-fill"></div>
+        </div>
+
+        <div class="admin-stat-controls">
+
+          <button class="admin-stat-minus"
+                  data-stat="mental" data-delta="-10">
+            -10
+          </button>
+
+          <button class="admin-stat-minus"
+                  data-stat="mental" data-delta="-1">
+            -1
+          </button>
+
+          <input type="number"
+                 class="admin-stat-input"
+                 id="admin-mental-input"
+                 min="0" max="100" value="0">
+
+          <button class="admin-stat-plus"
+                  data-stat="mental" data-delta="1">
+            +1
+          </button>
+
+          <button class="admin-stat-plus"
+                  data-stat="mental" data-delta="10">
+            +10
+          </button>
+
+        </div>
+
+        <div class="admin-stat-change"
+             id="admin-mental-change">
+          변동 없음
+        </div>
+
+      </div>
+
+      <!-- 허기 -->
+      <div class="admin-stat-card">
+
+        <div class="admin-stat-header">
+          <span>HUNGER / 허기</span>
+          <span id="admin-hunger-display">0 / 100</span>
+        </div>
+
+        <div class="admin-stat-track">
+          <div class="admin-stat-fill"
+               id="admin-hunger-fill"></div>
+        </div>
+
+        <div class="admin-stat-controls">
+
+          <button class="admin-stat-minus"
+                  data-stat="hunger" data-delta="-10">
+            -10
+          </button>
+
+          <button class="admin-stat-minus"
+                  data-stat="hunger" data-delta="-1">
+            -1
+          </button>
+
+          <input type="number"
+                 class="admin-stat-input"
+                 id="admin-hunger-input"
+                 min="0" max="100" value="0">
+
+          <button class="admin-stat-plus"
+                  data-stat="hunger" data-delta="1">
+            +1
+          </button>
+
+          <button class="admin-stat-plus"
+                  data-stat="hunger" data-delta="10">
+            +10
+          </button>
+
+        </div>
+
+        <div class="admin-stat-change"
+             id="admin-hunger-change">
+          변동 없음
+        </div>
+
+      </div>
+
+      <!-- 변경 사유 -->
+      <div class="widget" style="margin-bottom:12px;">
+
+        <div class="widget-title">
+          CHANGE REASON
+        </div>
+
+        <textarea id="admin-stat-reason"
+                  placeholder="능력치 변경 사유 (선택 사항)"
+                  style="
+                    width:100%;
+                    min-height:65px;
+                    box-sizing:border-box;
+                    resize:vertical;
+                  "></textarea>
+
+      </div>
+
+      <!-- 저장 및 초기화 -->
+      <div style="
+        display:flex;
+        justify-content:flex-end;
+        gap:8px;
+      ">
+
+        <button id="admin-stat-reset">
+          초기화
+        </button>
+
+        <button id="admin-stat-save"
+                style="
+                  background:#36594b;
+                  color:#b5dfc5;
+                  border:1px solid #789184;
+                ">
+          변경 적용
+        </button>
+
+      </div>
+
+    </div>
+
+    <p id="admin-stat-message"
+       style="
+         font-size:12px;
+         color:#d88ca3;
+         margin-top:12px;
+       ">
+    </p>
+
+  </div>
+</div>
+<!-- 관리자 능력치 관리 끝 -->
 <div class="dashboard">
 
   <!-- 왼쪽 플레이어 정보 -->
