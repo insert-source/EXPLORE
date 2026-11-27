@@ -1154,6 +1154,126 @@ top: 0;
   width: 8px;
   height: 8px;
 }
+  /* 캐릭터 클릭 효과 */
+
+.map-player-entry:not(.is-self):not(.is-group) {
+  pointer-events: auto;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.map-player-entry:not(.is-self):not(.is-group):hover {
+  background: #49303a;
+  color: #ffffff;
+}
+
+.map-player-tooltip-row:not(.is-self) {
+  cursor: pointer;
+}
+
+#map.location-picking .map-player-entry,
+#map.location-picking .map-player-tooltip-row {
+  pointer-events: none;
+}
+
+/* 캐릭터 상세창 */
+
+#survivor-detail-panel {
+  display: none;
+  position: absolute;
+  z-index: 30;
+  width: 320px;
+  max-width: calc(100% - 20px);
+  max-height: 90%;
+  overflow-y: auto;
+  padding: 14px;
+  background: rgba(33, 26, 30, 0.98);
+  border: 1px solid #653448;
+  border-radius: 5px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+  cursor: default;
+}
+
+#survivor-detail-close {
+  background: transparent;
+  border: none;
+  padding: 0 5px;
+  color: #998c92;
+  font-size: 19px;
+}
+
+#survivor-detail-name {
+  color: #e8e1e4;
+  font-size: 17px;
+  font-weight: bold;
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+
+.survivor-detail-info {
+  padding: 8px 0;
+  border-top: 1px solid #49303a;
+  border-bottom: 1px solid #49303a;
+}
+
+.survivor-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 11px;
+  color: #998c92;
+}
+
+.survivor-detail-value {
+  color: #d8cbd0;
+  font-weight: bold;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.survivor-detail-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.survivor-detail-actions button {
+  flex: 1;
+  padding: 8px 4px;
+  font-size: 11px;
+}
+
+#survivor-gift-btn {
+  background: #36594b;
+  border-color: #789184;
+  color: #b5dfc5;
+}
+
+#survivor-steal-btn {
+  background: #493d29;
+  border-color: #796342;
+  color: #d9ba82;
+}
+
+#survivor-pvp-btn {
+  background: #54283a;
+  border-color: #854057;
+  color: #e5a0b5;
+}
+
+.survivor-detail-actions button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+#survivor-detail-message {
+  font-size: 10px;
+  color: #998c92;
+  line-height: 1.6;
+  margin: 8px 0 0;
+}
 </style>
 </head>
 
@@ -2542,7 +2662,11 @@ async function loadMapPlayers() {
 
   mapPlayers = data || [];
 
-  renderMapPlayers();
+renderMapPlayers();
+
+refreshSurvivorDetail();
+
+if (selectedSurvivorId) loadSurvivorPvpSettings();
 
 }
 
@@ -2587,6 +2711,395 @@ document.addEventListener('keydown', event => {
     closeMapPlayerGroups();
 
   }
+
+});
+  // 캐릭터 상세창
+
+let selectedSurvivorId = null;
+let survivorPvpSettings = new Map();
+let survivorDetailRequest = 0;
+
+const survivorDetailPanel = document.createElement('div');
+
+survivorDetailPanel.id = 'survivor-detail-panel';
+
+survivorDetailPanel.innerHTML = `
+  <div class="location-detail-header">
+    <span class="location-detail-title">
+      SURVIVOR / INFORMATION
+    </span>
+    <button id="survivor-detail-close">×</button>
+  </div>
+
+  <div id="survivor-detail-name"></div>
+
+  <div class="survivor-detail-info">
+
+    <div class="survivor-detail-row">
+      <span>LOCATION / 현재 위치</span>
+      <span class="survivor-detail-value"
+            id="survivor-detail-location"></span>
+    </div>
+
+    <div class="survivor-detail-row">
+      <span>PVP / 전투 동의</span>
+      <span class="survivor-detail-value"
+            id="survivor-detail-pvp"></span>
+    </div>
+
+    <div class="survivor-detail-row">
+      <span>STATUS / 접촉 상태</span>
+      <span class="survivor-detail-value"
+            id="survivor-detail-status"></span>
+    </div>
+
+  </div>
+
+  <div class="survivor-detail-actions">
+    <button id="survivor-gift-btn">선물하기</button>
+    <button id="survivor-steal-btn">훔치기</button>
+    <button id="survivor-pvp-btn">PVP 신청</button>
+  </div>
+
+  <p id="survivor-detail-message"></p>
+`;
+
+map.appendChild(survivorDetailPanel);
+
+
+// PVP 설정 조회
+
+async function loadSurvivorPvpSettings() {
+
+  const requestId = ++survivorDetailRequest;
+
+  const { data, error } = await supabaseClient
+    .rpc('get_map_player_pvp');
+
+  if (requestId !== survivorDetailRequest) return;
+
+  if (!selectedSurvivorId) return;
+
+  survivorPvpSettings.clear();
+
+  if (error) {
+
+    console.error('PVP 정보 조회 실패:', error);
+
+    refreshSurvivorDetail();
+
+    return;
+
+  }
+
+  (data || []).forEach(player => {
+
+    survivorPvpSettings.set(
+      player.user_id,
+      player.pvp_enabled
+    );
+
+  });
+
+  refreshSurvivorDetail();
+
+}
+
+
+// 캐릭터 상세창 열기
+
+function showSurvivorDetail(userId) {
+
+  if (userId === mapCurrentUserId) return;
+
+  closeLocationDetail();
+  closeMapPlayerGroups();
+
+  selectedSurvivorId = userId;
+
+  survivorPvpSettings.clear();
+
+  survivorDetailPanel.style.display = 'block';
+
+  refreshSurvivorDetail();
+
+  loadSurvivorPvpSettings();
+
+}
+
+
+// 캐릭터 상세창 닫기
+
+function closeSurvivorDetail() {
+
+  survivorDetailRequest++;
+
+  selectedSurvivorId = null;
+
+  survivorPvpSettings.clear();
+
+  survivorDetailPanel.style.display = 'none';
+
+}
+
+
+// 상세창 정보 갱신
+
+function refreshSurvivorDetail() {
+
+  if (!selectedSurvivorId) return;
+
+  const target = mapPlayers.find(
+    player => player.user_id === selectedSurvivorId
+  );
+
+  const self = mapPlayers.find(
+    player => player.user_id === mapCurrentUserId
+  );
+
+  if (!target) {
+
+    closeSurvivorDetail();
+
+    return;
+
+  }
+
+  const location = mapLocations.find(
+    location => location.id === target.current_location_id
+  );
+
+  const sameLocation = Boolean(
+    self &&
+    self.current_location_id &&
+    self.current_location_id === target.current_location_id
+  );
+
+  const targetPvp = survivorPvpSettings.get(
+    target.user_id
+  );
+
+  const selfPvp = survivorPvpSettings.get(
+    mapCurrentUserId
+  );
+
+  document.getElementById(
+    'survivor-detail-name'
+  ).textContent = target.player_name || '이름 미등록';
+
+  document.getElementById(
+    'survivor-detail-location'
+  ).textContent = location?.name || '위치 미확인';
+
+  const pvpText = document.getElementById(
+    'survivor-detail-pvp'
+  );
+
+  pvpText.textContent =
+    targetPvp === true
+      ? 'ENABLED'
+      : targetPvp === false
+        ? 'DISABLED'
+        : 'UNKNOWN';
+
+  pvpText.style.color =
+    targetPvp === true ? '#9dc5ae' : '#998c92';
+
+  const statusText = document.getElementById(
+    'survivor-detail-status'
+  );
+
+  statusText.textContent =
+    sameLocation ? '접촉 가능' : '접촉 불가';
+
+  statusText.style.color =
+    sameLocation ? '#9dc5ae' : '#bd6b83';
+
+  document.getElementById(
+    'survivor-gift-btn'
+  ).disabled = !sameLocation;
+
+  document.getElementById(
+    'survivor-steal-btn'
+  ).disabled = !sameLocation;
+
+  document.getElementById(
+    'survivor-pvp-btn'
+  ).disabled = !(
+    sameLocation &&
+    targetPvp === true &&
+    selfPvp === true
+  );
+
+  document.getElementById(
+    'survivor-detail-message'
+  ).textContent = !sameLocation
+    ? '같은 장소에 있어야 상호작용할 수 있습니다.'
+    : targetPvp === undefined || selfPvp === undefined
+      ? 'PVP 설정을 확인하는 중입니다.'
+      : !targetPvp || !selfPvp
+        ? 'PVP에 동의한 캐릭터끼리만 전투 신청이 가능합니다.'
+        : '상호작용 대상을 선택했습니다.';
+
+  updateSurvivorDetailPosition();
+
+}
+
+
+// 지도 위 상세창 위치 조정
+
+function updateSurvivorDetailPosition() {
+
+  if (!selectedSurvivorId) return;
+
+  const target = mapPlayers.find(
+    player => player.user_id === selectedSurvivorId
+  );
+
+  if (!target) return;
+
+  const location = mapLocations.find(
+    location => location.id === target.current_location_id
+  );
+
+  if (!location) return;
+
+  const size = 50 * scale;
+
+  let left = x + location.x * size + 65;
+  let top = y + location.y * size + 15;
+
+  const panelWidth = survivorDetailPanel.offsetWidth;
+  const panelHeight = survivorDetailPanel.offsetHeight;
+
+  left = Math.max(
+    5,
+    Math.min(left, map.clientWidth - panelWidth - 5)
+  );
+
+  top = Math.max(
+    5,
+    Math.min(top, map.clientHeight - panelHeight - 5)
+  );
+
+  survivorDetailPanel.style.left = `${left}px`;
+  survivorDetailPanel.style.top = `${top}px`;
+
+}
+
+
+// 캐릭터 상세창 이벤트
+
+document.getElementById(
+  'survivor-detail-close'
+).addEventListener('click', closeSurvivorDetail);
+
+['pointerdown', 'mousedown', 'click', 'wheel'].forEach(type => {
+
+  survivorDetailPanel.addEventListener(type, event => {
+
+    event.stopPropagation();
+
+  });
+
+});
+
+document.addEventListener('pointerdown', event => {
+
+  if (
+    !event.target.closest('#survivor-detail-panel') &&
+    !event.target.closest('.map-player-group')
+  ) {
+
+    closeSurvivorDetail();
+
+  }
+
+});
+
+document.addEventListener('keydown', event => {
+
+  if (event.key === 'Escape') {
+
+    closeSurvivorDetail();
+
+  }
+
+});
+
+
+// 플레이어 마커 클릭 이벤트
+
+mapPlayerLayer.addEventListener('pointerdown', event => {
+
+  if (
+    event.target.closest(
+      '.map-player-entry:not(.is-self), .map-player-tooltip-row'
+    )
+  ) {
+
+    event.stopPropagation();
+
+  }
+
+});
+
+mapPlayerLayer.addEventListener('mousedown', event => {
+
+  if (
+    event.target.closest(
+      '.map-player-entry:not(.is-self), .map-player-tooltip-row'
+    )
+  ) {
+
+    event.stopPropagation();
+
+  }
+
+});
+
+mapPlayerLayer.addEventListener('click', event => {
+
+  if (map.classList.contains('location-picking')) return;
+
+  const entry = event.target.closest(
+    '[data-user-id]'
+  );
+
+  if (!entry) return;
+
+  if (entry.classList.contains('is-self')) return;
+
+  event.stopPropagation();
+
+  showSurvivorDetail(entry.dataset.userId);
+
+}, true);
+
+
+// 상호작용 버튼 임시 연결
+
+document.getElementById(
+  'survivor-gift-btn'
+).addEventListener('click', () => {
+
+  alert('선물하기 기능은 준비 중입니다.');
+
+});
+
+document.getElementById(
+  'survivor-steal-btn'
+).addEventListener('click', () => {
+
+  alert('훔치기 기능은 준비 중입니다.');
+
+});
+
+document.getElementById(
+  'survivor-pvp-btn'
+).addEventListener('click', () => {
+
+  alert('PVP 신청 기능은 준비 중입니다.');
 
 });
 function renderMapPlayers() {
@@ -2845,7 +3358,7 @@ function startMapPlayersRefresh() {
 // 자동 갱신 종료
 
 function stopMapPlayersRefresh() {
-
+closeSurvivorDetail();
 
   closeMapPlayerGroups();
   if (mapPlayersTimer !== null) {
@@ -2882,6 +3395,7 @@ function updateMap() {
   updatePlayerMapPosition();
 
   updateMapPlayerPositions();
+  updateSurvivorDetailPosition();
 
 }
 // 장소 아이콘 위치 갱신
