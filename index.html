@@ -1274,6 +1274,89 @@ top: 0;
   line-height: 1.6;
   margin: 8px 0 0;
 }
+
+  /* 이동 진행창 */
+
+#movement-progress-panel {
+  display: none;
+  position: absolute;
+  top: 35px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  width: 280px;
+  max-width: calc(100% - 24px);
+  padding: 9px 12px;
+  background: rgba(28, 24, 26, 0.97);
+  border: 1px solid #496356;
+  border-radius: 5px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.4);
+  cursor: default;
+}
+
+.movement-progress-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.movement-progress-title {
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: #9dc5ae;
+}
+
+#movement-route {
+  flex: 1;
+  font-size: 11px;
+  color: #d8cbd0;
+  overflow-wrap: anywhere;
+}
+
+.movement-progress-track {
+  height: 5px;
+  background: #35282e;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+#movement-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #789184;
+  border-radius: 5px;
+  transition: width 0.3s linear;
+}
+
+.movement-progress-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 7px;
+}
+
+#movement-remaining {
+  color: #b5dfc5;
+  font-size: 11px;
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+}
+
+#movement-cancel-btn {
+  padding: 3px 8px;
+  background: #352129;
+  border: 1px solid #653448;
+  color: #d88ca3;
+  font-size: 10px;
+}
+
+#movement-cancel-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 </style>
 </head>
 
@@ -3338,19 +3421,49 @@ function updateMapPlayerPositions() {
 }
 
 
-// 자동 갱신 시작
-
 function startMapPlayersRefresh() {
 
   stopMapPlayersRefresh();
 
-  loadMapPlayers();
+  let refreshing = false;
 
-  mapPlayersTimer = setInterval(() => {
+  async function refresh() {
 
-    loadMapPlayers();
+    if (refreshing) return;
 
-  }, 5000);
+    refreshing = true;
+
+    try {
+
+      const wasMoving =
+        playerMovement?.status === 'moving';
+
+      await loadPlayerMovement();
+      await loadMapPlayers();
+
+      updateMovementProgress();
+      updateLocationActionButtons();
+
+      if (
+        wasMoving &&
+        playerMovement?.status === 'idle'
+      ) {
+
+        await loadActivityLogs();
+
+      }
+
+    } finally {
+
+      refreshing = false;
+
+    }
+
+  }
+
+  refresh();
+
+  mapPlayersTimer = setInterval(refresh, 5000);
 
 }
 
@@ -3378,6 +3491,312 @@ closeSurvivorDetail();
   mapPlayerLayer.innerHTML = '';
 
 }
+  // 이동 진행창
+
+let movementActionPending = false;
+
+const movementProgressPanel = document.createElement('div');
+
+movementProgressPanel.id = 'movement-progress-panel';
+
+movementProgressPanel.innerHTML = `
+  <div class="movement-progress-header">
+
+    <span class="movement-progress-title">
+      MOVING
+    </span>
+
+    <span id="movement-route"></span>
+
+  </div>
+
+  <div class="movement-progress-track">
+    <div id="movement-progress-fill"></div>
+  </div>
+
+  <div class="movement-progress-footer">
+
+    <span id="movement-remaining">
+      00:00
+    </span>
+
+    <button id="movement-cancel-btn">
+      이동 취소
+    </button>
+
+  </div>
+`;
+
+map.appendChild(movementProgressPanel);
+
+
+// 지도 드래그 및 확대 방지
+
+['pointerdown', 'mousedown', 'click', 'wheel'].forEach(type => {
+
+  movementProgressPanel.addEventListener(type, event => {
+
+    event.stopPropagation();
+
+  });
+
+});
+
+
+// 이동 진행 상태 표시
+
+function updateMovementProgress() {
+
+  if (!playerMovement || playerMovement.status !== 'moving') {
+
+    movementProgressPanel.style.display = 'none';
+
+    return;
+
+  }
+
+  movementProgressPanel.style.display = 'block';
+
+  const origin = mapLocations.find(
+    location => location.id === playerMovement.current_location_id
+  );
+
+  const destination = mapLocations.find(
+    location => location.id === playerMovement.destination_location_id
+  );
+
+  document.getElementById('movement-route').textContent =
+    `${origin?.name || '출발지'} → ${destination?.name || '목적지'}`;
+
+  const startedAt = new Date(
+    playerMovement.move_started_at
+  ).getTime();
+
+  const endsAt = new Date(
+    playerMovement.move_ends_at
+  ).getTime();
+
+  const now = Date.now();
+
+  const total = Math.max(1, endsAt - startedAt);
+
+  const remaining = Math.max(0, endsAt - now);
+
+  const progress = Math.min(
+    100,
+    Math.max(0, (now - startedAt) / total * 100)
+  );
+
+  document.getElementById(
+    'movement-progress-fill'
+  ).style.width = `${progress}%`;
+
+  const seconds = Math.ceil(remaining / 1000);
+
+  const minutesText = String(
+    Math.floor(seconds / 60)
+  ).padStart(2, '0');
+
+  const secondsText = String(
+    seconds % 60
+  ).padStart(2, '0');
+
+  document.getElementById(
+    'movement-remaining'
+  ).textContent = remaining > 0
+    ? `남은 시간 ${minutesText}:${secondsText}`
+    : '도착 처리 중...';
+
+  document.getElementById(
+    'movement-cancel-btn'
+  ).disabled = remaining <= 0 || movementActionPending;
+
+}
+
+
+// 실시간 진행 바 갱신
+
+setInterval(updateMovementProgress, 250);
+  // 이동 시작
+
+async function startPlayerMove(location) {
+
+  if (!location || movementActionPending) return;
+
+  if (!confirm(
+    `${location.name}(으)로 이동하시겠습니까?\n\n` +
+    `소요 시간 : ${location.travel_minutes}분`
+  )) return;
+
+  movementActionPending = true;
+
+  try {
+
+    const { error } = await supabaseClient.rpc(
+      'start_player_move',
+      {
+        p_location_id: location.id
+      }
+    );
+
+    if (error) {
+
+      alert('이동 실패: ' + error.message);
+
+      return;
+
+    }
+
+    closeLocationDetail();
+    closeSurvivorDetail();
+
+    await loadPlayerMovement();
+    await loadMapPlayers();
+    await loadActivityLogs();
+
+    updateMovementProgress();
+
+  } finally {
+
+    movementActionPending = false;
+
+    updateMovementProgress();
+    updateLocationActionButtons();
+
+  }
+
+}
+
+
+// 이동 취소
+
+async function cancelPlayerMove() {
+
+  if (movementActionPending) return;
+
+  if (!confirm(
+    '현재 이동을 취소하시겠습니까?\n출발지에 그대로 남게 됩니다.'
+  )) return;
+
+  movementActionPending = true;
+
+  updateMovementProgress();
+
+  try {
+
+    const { error } = await supabaseClient.rpc(
+      'cancel_player_move'
+    );
+
+    if (error) {
+
+      alert('이동 취소 실패: ' + error.message);
+
+    }
+
+    await loadPlayerMovement();
+    await loadMapPlayers();
+    await loadActivityLogs();
+
+  } finally {
+
+    movementActionPending = false;
+
+    updateMovementProgress();
+    updateLocationActionButtons();
+
+  }
+
+}
+
+
+document.getElementById(
+  'movement-cancel-btn'
+).addEventListener('click', cancelPlayerMove);
+  // 장소 상세창 버튼 상태 갱신
+
+function updateLocationActionButtons() {
+
+  const moveBtn = document.getElementById(
+    'location-move-btn'
+  );
+
+  const exploreBtn = document.getElementById(
+    'location-explore-btn'
+  );
+
+  const message = document.getElementById(
+    'location-detail-message'
+  );
+
+  if (!selectedMapLocation) return;
+
+  moveBtn.disabled = true;
+  exploreBtn.disabled = true;
+
+  if (movementActionPending) {
+
+    message.textContent = '처리 중입니다.';
+
+    return;
+
+  }
+
+  if (!playerMovement?.current_location_id) {
+
+    message.textContent = '플레이어의 현재 위치가 지정되지 않았습니다.';
+
+    return;
+
+  }
+
+  if (playerMovement.status === 'moving') {
+
+    message.textContent = '현재 이동 중입니다.';
+
+    return;
+
+  }
+
+  const isCurrentLocation =
+    playerMovement.current_location_id === selectedMapLocation.id;
+
+  if (isCurrentLocation) {
+
+    message.textContent = '현재 위치입니다. 조사 기능은 준비 중입니다.';
+
+    return;
+
+  }
+
+  if (!selectedMapLocation.is_visible) {
+
+    message.textContent = '이동할 수 없는 장소입니다.';
+
+    return;
+
+  }
+
+  moveBtn.disabled = false;
+
+  message.textContent = '';
+
+}
+
+
+// 이동 버튼 연결
+
+document.getElementById(
+  'location-move-btn'
+).addEventListener('click', () => {
+
+  if (selectedMapLocation) {
+
+    startPlayerMove(selectedMapLocation);
+
+  }
+
+});
 function updateMap() {
 
   const size = 50 * scale;
@@ -3609,6 +4028,7 @@ function showLocationDetail(location) {
 
   // 선택한 장소 옆에 상세창 배치
   updateLocationDetailPosition();
+  updateLocationActionButtons();
 
 }
 
