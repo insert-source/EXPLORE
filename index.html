@@ -3191,8 +3191,9 @@ label[for="admin-location-travel"] {
 }
   /* 아이템 목록 직접 편집 */
 
+.admin-item-table select { background:#171416;color:#e8e1e4;border:1px solid #49303a;padding:5px;font-size:11px; }
 .admin-item-table {
-  min-width: 780px;
+  min-width: 980px;
 }
 
 #admin-item-list {
@@ -4154,7 +4155,7 @@ max-width:calc(100vw - 30px);
   </div>
 
   <div style="font-size:11px; color:#998c92; margin:10px 0;">
-    이름 / 설명 / 체력 / 정신력 / 허기 / 사용 가능 (사용 시 소모)
+    이름 / 설명 / 체력 / 정신력 / 허기 / 물품 종류 (소모성 또는 특수효과, 기존 O/X도 가능)
     <br>
     엑셀에서 복사한 내용을 아래에 붙여넣으세요.
   </div>
@@ -11288,6 +11289,8 @@ function renderInventory(items) {
       );
     }
 
+    if (info.item_type === 'passive') effects.push(...passiveText(info.passive_effects));
+
     if (effects.length > 0) {
       const effect = document.createElement('div');
       effect.style.fontSize = '11px';
@@ -11371,7 +11374,9 @@ async function loadInventory() {
         mental_effect,
         hunger_effect,
         usable,
-        consumable
+        consumable,
+        item_type,
+        passive_effects
       )
     `)
     .eq('user_id', user.id)
@@ -12153,12 +12158,14 @@ let adminItemCache = [];
 const newAdminItems = new Map();
 let inlineSaving = false;
 let inlineLoading = false;
-const inlineFields = ['name','description','health_effect','mental_effect','hunger_effect','usable','consumable'];
+const passiveLabels = {health_loss_reduction:'체력 소모량 감소',mental_loss_reduction:'정신력 소모량 감소',health_recovery_bonus:'체력 회복량 증가',mental_recovery_bonus:'정신력 회복량 증가',health_loss_chance_reduction:'체력 감소 확률 감소',mental_loss_chance_reduction:'정신력 감소 확률 감소'};
+function passiveText(effects) { return Object.entries(effects || {}).filter(([k,v])=>passiveLabels[k] && Number(v)>0).map(([k,v])=>`${passiveLabels[k]} ${k.endsWith('bonus')?'+':'-'}${v}%`); }
+const inlineFields = ['name','description','health_effect','mental_effect','hunger_effect','usable','consumable','item_type','passive_effects'];
 function inlineBusy() { return inlineSaving || inlineLoading || itemDropSaving || document.getElementById('admin-item-bulk-input').disabled; }
 document.getElementById('admin-item-add').onclick = () => {
   if (inlineBusy()) return;
   const id = 'new-' + crypto.randomUUID();
-  newAdminItems.set(id, {id, name:'', description:'', health_effect:0, mental_effect:0, hunger_effect:0, usable:false, consumable:false});
+  newAdminItems.set(id, {id, name:'', description:'', health_effect:0, mental_effect:0, hunger_effect:0, usable:false, consumable:false, item_type:'passive', passive_effects:{}});
   renderAdminItemTable(); updateInlineItemStatus();
   document.getElementById('admin-item-list').scrollTop = 0;
   document.querySelector('#admin-item-list tbody input')?.focus();
@@ -12270,7 +12277,10 @@ document.getElementById('admin-item-inline-save').onclick = async () => {
     const draft = {...item, ...adminItemChanges.get(item.id)};
     const payload = Object.fromEntries(inlineFields.map(k => [k,draft[k]]));
     payload.name = (payload.name || '').trim(); payload.description = (payload.description || '').trim();
-    payload.usable = Boolean(payload.usable); payload.consumable = payload.usable;
+    payload.usable = payload.item_type === 'consumable'; payload.consumable = payload.usable;
+    if (payload.usable) payload.passive_effects = {};
+    else { payload.health_effect = payload.mental_effect = payload.hunger_effect = 0; }
+    if (Object.entries(payload.passive_effects || {}).some(([k,v])=>!passiveLabels[k] || !Number.isFinite(v) || v<0 || v>100)) { message.textContent = '특수효과는 0~100%로 입력해 주세요.'; return; }
     if (!payload.name) { message.textContent = '아이템 이름을 입력해 주세요.'; return; }
     if (['health_effect','mental_effect','hunger_effect'].some(k => !Number.isInteger(payload[k]) || Math.abs(payload[k]) > 100)) { message.textContent = payload.name + ': 능력치는 -100~100 사이 정수여야 합니다.'; return; }
     rows.push({id:item.id, fresh:newAdminItems.has(item.id), payload});
@@ -12314,7 +12324,7 @@ function renderAdminItemTable() {
 <th>체력</th>
         <th>정신력</th>
         <th>허기</th>
-        <th>사용</th>
+        <th>물품 종류</th><th>특수효과</th>
         <th>관리</th>
       </tr>
     </thead>
@@ -12369,8 +12379,7 @@ row.classList.toggle(
   ['description', 'textarea'],
   ['health_effect', 'number'],
   ['mental_effect', 'number'],
-  ['hunger_effect', 'number'],
-  ['usable', 'checkbox']
+  ['hunger_effect', 'number']
 ].forEach(([key, type]) => {
 
   const cell = row.insertCell();
@@ -12393,6 +12402,7 @@ row.classList.toggle(
     input.min = -100;
     input.max = 100;
     input.step = 1;
+    input.disabled = draft.item_type !== 'consumable';
   }
 
   input.addEventListener('input', () => {
@@ -12412,6 +12422,37 @@ row.classList.toggle(
 
 });
 
+    const typeCell = row.insertCell();
+    const typeSelect = document.createElement('select');
+    for (const [value,label] of [['consumable','소모성'],['passive','특수효과']]) { const o = new Option(label,value); typeSelect.add(o); }
+    typeSelect.value = draft.item_type || 'passive';
+    typeSelect.onchange = () => {
+      updateInlineItem(item,'item_type',typeSelect.value,row);
+      if (typeSelect.value === 'passive') for (const k of ['health_effect','mental_effect','hunger_effect']) updateInlineItem(item,k,0,row);
+      else updateInlineItem(item,'passive_effects',{},row);
+      renderAdminItemTable();
+    };
+    typeCell.append(typeSelect);
+    const effectCell = row.insertCell();
+    if (draft.item_type === 'passive') {
+      const values = {...draft.passive_effects};
+      const redraw = () => {
+        effectCell.replaceChildren();
+        for (const [key,value] of Object.entries(values)) {
+          const line = document.createElement('div'); line.style.cssText='display:flex;align-items:center;gap:4px;margin:3px 0';
+          const label = document.createElement('span'); label.textContent = passiveLabels[key] || key;
+          const input = document.createElement('input'); input.type='number'; input.min=0; input.max=100; input.step='any'; input.value=value;
+          input.oninput=()=>{values[key]=input.valueAsNumber;updateInlineItem(item,'passive_effects',{...values},row);};
+          const del=document.createElement('button'); del.textContent='×'; del.onclick=()=>{delete values[key];updateInlineItem(item,'passive_effects',{...values},row);redraw();};
+          line.append(label,input,document.createTextNode('%'),del);effectCell.append(line);
+        }
+        const select=document.createElement('select');
+        for(const [key,label] of Object.entries(passiveLabels)) if(!(key in values)) select.add(new Option(label,key));
+        const add=document.createElement('button');add.textContent='+ 특수효과';add.disabled=!select.options.length;
+        add.onclick=()=>{if(!select.value)return;values[select.value]=0;updateInlineItem(item,'passive_effects',{...values},row);redraw();};
+        effectCell.append(select,add);
+      }; redraw();
+    } else effectCell.textContent='—';
     const actions = row.insertCell();
 
     const editBtn = document.createElement('button');
@@ -15447,7 +15488,7 @@ document.getElementById(
         `${row.name} — 등록 가능\n` +
         `${row.description}\n` +
         `체력 ${row.health_effect} / 정신력 ${row.mental_effect} / 허기 ${row.hunger_effect}\n` +
-        `사용 가능: ${row.usable ? 'O' : 'X'}`;
+        `물품 종류: ${row.usable ? '소모성' : '특수효과'}`;
 
     }
 
@@ -15497,15 +15538,15 @@ function parseBulkItemRows(text) {
 
     const v = (value || '').trim().toLowerCase();
 
-    if (['o', 'true', '1', '○'].includes(v)) {
+    if (['o', 'true', '1', '○','소모성','consumable'].includes(v)) {
       return true;
     }
 
-    if (['x', 'false', '0', '×', ''].includes(v)) {
+    if (['x', 'false', '0', '×', '', '특수효과','passive'].includes(v)) {
       return false;
     }
 
-    throw new Error('사용 가능은 O/X로 입력해 주세요.');
+    throw new Error('물품 종류는 소모성/특수효과 또는 O/X로 입력해 주세요.');
 
   }
 
@@ -15533,6 +15574,8 @@ function parseBulkItemRows(text) {
         throw new Error('입력 항목이 너무 많습니다.');
       }
 
+      const usable = parseBoolean(cols[5]);
+      if (!usable && [2,3,4].some(i=>parseNumber(cols[i])!==0)) throw new Error('특수효과 물품은 정수 증감량을 설정할 수 없습니다.');
       rows.push({
         name: name,
         description: cols[1]?.trim() || '',
@@ -15540,7 +15583,9 @@ function parseBulkItemRows(text) {
         mental_effect: parseNumber(cols[3]),
         hunger_effect: parseNumber(cols[4]),
         usable: parseBoolean(cols[5]),
-        consumable: parseBoolean(cols[5])
+        consumable: usable,
+        item_type: usable ? 'consumable' : 'passive',
+        passive_effects: {}
       });
 
     } catch (error) {
@@ -16175,7 +16220,7 @@ async function refreshPendingItems() {
   const label=document.createElement('span'); label.textContent=`${item.item_name} · ${item.applicants.join(', ')} (${item.request_count}개)`;
   const add=document.createElement('button'); add.textContent='목록에서 등록';
   add.onclick=()=>{if(inlineBusy())return; if([...newAdminItems.values()].some(x=>x.name===item.item_name))return;
-   const id='new-'+crypto.randomUUID(); newAdminItems.set(id,{id,name:item.item_name,description:'',health_effect:0,mental_effect:0,hunger_effect:0,usable:false,consumable:false}); renderAdminItemTable();updateInlineItemStatus();};
+   const id='new-'+crypto.randomUUID(); newAdminItems.set(id,{id,name:item.item_name,description:'',health_effect:0,mental_effect:0,hunger_effect:0,usable:false,consumable:false,item_type:'passive',passive_effects:{}}); renderAdminItemTable();updateInlineItemStatus();};
   row.append(label,add);box.append(row);
  }
 }
