@@ -626,6 +626,32 @@ document.getElementById('auth-close').onclick = () => {
 
 // 회원가입 및 로그인
 authSubmit.onclick = async () => {
+    // 회원가입 시 플레이어 정보 확인
+  if (authMode === 'signup') {
+    const playerName = document.getElementById('player-name').value.trim();
+    const health = Number(document.getElementById('player-health').value);
+    const mental = Number(document.getElementById('player-mental').value);
+    const hunger = Number(document.getElementById('player-hunger').value);
+
+    if (!playerName) {
+      authMessage.textContent = '플레이어 이름을 입력해 줘.';
+      return;
+    }
+
+    if (
+      health < 0 || health > 100 ||
+      mental < 0 || mental > 100 ||
+      hunger < 0 || hunger > 100
+    ) {
+      authMessage.textContent = '각 수치는 0~100 사이여야 해.';
+      return;
+    }
+
+    if (health + mental + hunger > 100) {
+      authMessage.textContent = '체력, 정신력, 허기의 합계는 100을 넘을 수 없어.';
+      return;
+    }
+  }
   const email = authEmail.value.trim();
   const password = authPassword.value;
 
