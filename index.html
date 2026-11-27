@@ -62,26 +62,6 @@ input {
   border-radius: 4px;
   min-width: 0;
 }
-/* 관리자 아이템 설명 입력란 */
-
-#admin-item-description {
-  background: #171315;
-  border: 1px solid #50313c;
-  color: white;
-  padding: 9px;
-  border-radius: 4px;
-  min-width: 0;
-  width: 100%;
-  box-sizing: border-box;
-  font-family: inherit;
-  font-size: inherit;
-  resize: vertical;
-}
-
-#admin-item-description:focus {
-  outline: none;
-  border-color: #d88ca3;
-}
 .dashboard {
   display: grid;
   grid-template-columns: 250px minmax(0, 1fr);
@@ -4106,7 +4086,7 @@ max-width:calc(100vw - 30px);
   <input
     type="text"
     id="admin-item-search"
-    placeholder="아이템 이름 또는 설명 검색"
+    placeholder="아이템 이름 검색"
     style="flex:1; min-width:0;"
   >
 
@@ -4166,7 +4146,7 @@ max-width:calc(100vw - 30px);
   </div>
 
   <div style="font-size:11px; color:#998c92; margin:10px 0;">
-    이름 / 설명 / 체력 / 정신력 / 허기 / 물품 종류 (소모성 또는 특수효과, 기존 O/X도 가능)
+    이름 / 체력 / 정신력 / 허기 / 물품 종류 (소모성 또는 특수효과, 기존 O/X도 가능)
     <br>
     엑셀에서 복사한 내용을 아래에 붙여넣으세요.
   </div>
@@ -11284,22 +11264,6 @@ function renderInventory(items) {
 
     top.append(name, count);
     item.appendChild(top);
-    if (activeEffects.length) {
-      const badge = document.createElement('div');
-      badge.className = 'passive-active-label';
-      badge.textContent = '적용 중 · ' + passiveText(Object.fromEntries(activeEffects)).join(' / ');
-      item.appendChild(badge);
-    }
-
-    // 아이템 설명
-    const description = document.createElement('div');
-    description.style.fontSize = '11px';
-    description.style.color = '#998c92';
-    description.textContent =
-      info.description || '개인 소지품';
-
-    item.appendChild(description);
-
     // 아이템 효과
     const effects = [];
 
@@ -11321,7 +11285,19 @@ function renderInventory(items) {
       );
     }
 
-    if (info.item_type === 'passive') effects.push(...passiveText(info.passive_effects));
+    if (info.item_type === 'passive') {
+      const activeKeys = new Set(activeEffects.map(([key]) => key));
+      for (const [key, value] of Object.entries(info.passive_effects || {})) {
+        const label = passiveText({[key]: value})[0];
+        if (!label) continue;
+        const line = document.createElement('div');
+        line.style.fontSize = '11px';
+        line.style.color = '#789184';
+        if (activeKeys.has(key)) line.className = 'passive-active-label';
+        line.textContent = label + (activeKeys.has(key) ? ' · 적용 중' : '');
+        item.appendChild(line);
+      }
+    }
 
     if (effects.length > 0) {
       const effect = document.createElement('div');
@@ -11401,7 +11377,6 @@ async function loadInventory() {
       quantity,
       items (
         name,
-        description,
         health_effect,
         mental_effect,
         hunger_effect,
@@ -12192,12 +12167,12 @@ let inlineSaving = false;
 let inlineLoading = false;
 const passiveLabels = {health_loss_reduction:'체력 소모량 감소',mental_loss_reduction:'정신력 소모량 감소',health_recovery_bonus:'체력 회복량 증가',mental_recovery_bonus:'정신력 회복량 증가',health_loss_chance_reduction:'체력 감소 확률 감소',mental_loss_chance_reduction:'정신력 감소 확률 감소'};
 function passiveText(effects) { return Object.entries(effects || {}).filter(([k,v])=>passiveLabels[k] && Number(v)>0).map(([k,v])=>`${passiveLabels[k]} ${k.endsWith('bonus')?'+':'-'}${v}%`); }
-const inlineFields = ['name','description','health_effect','mental_effect','hunger_effect','usable','consumable','item_type','passive_effects'];
+const inlineFields = ['name','health_effect','mental_effect','hunger_effect','usable','consumable','item_type','passive_effects'];
 function inlineBusy() { return inlineSaving || inlineLoading || itemDropSaving || document.getElementById('admin-item-bulk-input').disabled; }
 document.getElementById('admin-item-add').onclick = () => {
   if (inlineBusy()) return;
   const id = 'new-' + crypto.randomUUID();
-  newAdminItems.set(id, {id, name:'', description:'', health_effect:0, mental_effect:0, hunger_effect:0, usable:false, consumable:false, item_type:'passive', passive_effects:{}});
+  newAdminItems.set(id, {id, name:'',  health_effect:0, mental_effect:0, hunger_effect:0, usable:false, consumable:false, item_type:'passive', passive_effects:{}});
   renderAdminItemTable(); updateInlineItemStatus();
   document.getElementById('admin-item-list').scrollTop = 0;
   document.querySelector('#admin-item-list tbody input')?.focus();
@@ -12308,7 +12283,7 @@ document.getElementById('admin-item-inline-save').onclick = async () => {
   for (const item of [...adminItemCache.filter(i => adminItemChanges.has(i.id)), ...newAdminItems.values()]) {
     const draft = {...item, ...adminItemChanges.get(item.id)};
     const payload = Object.fromEntries(inlineFields.map(k => [k,draft[k]]));
-    payload.name = (payload.name || '').trim(); payload.description = (payload.description || '').trim();
+    payload.name = (payload.name || '').trim();
     payload.usable = payload.item_type === 'consumable'; payload.consumable = payload.usable;
     if (payload.usable) payload.passive_effects = {};
     else { payload.health_effect = payload.mental_effect = payload.hunger_effect = 0; }
@@ -12352,7 +12327,6 @@ function renderAdminItemTable() {
     <thead>
       <tr>
 <th>이름</th>
-<th>설명</th>
 <th>체력</th>
         <th>정신력</th>
         <th>허기</th>
@@ -12374,8 +12348,7 @@ const sort = document.getElementById(
 ).value;
 
 const filteredItems = adminItemCache.filter(item =>
-  item.name.toLowerCase().includes(keyword) ||
-  (item.description || '').toLowerCase().includes(keyword)
+  item.name.toLowerCase().includes(keyword)
 );
 
 filteredItems.sort((a, b) => {
@@ -12408,7 +12381,6 @@ row.classList.toggle(
 
 [
   ['name', 'text'],
-  ['description', 'textarea'],
   ['health_effect', 'number'],
   ['mental_effect', 'number'],
   ['hunger_effect', 'number']
@@ -15518,7 +15490,6 @@ document.getElementById(
 
       box.textContent =
         `${row.name} — 등록 가능\n` +
-        `${row.description}\n` +
         `체력 ${row.health_effect} / 정신력 ${row.mental_effect} / 허기 ${row.hunger_effect}\n` +
         `물품 종류: ${row.usable ? '소모성' : '특수효과'}`;
 
@@ -15591,7 +15562,7 @@ function parseBulkItemRows(text) {
     if (
       index === 0 &&
       cols[0].trim() === '이름' &&
-      cols[1]?.trim() === '설명'
+      ['체력','체력 증감량'].includes(cols[1]?.trim())
     ) return;
 
     try {
@@ -15602,19 +15573,18 @@ function parseBulkItemRows(text) {
         throw new Error('아이템 이름이 없습니다.');
       }
 
-      if (cols.length > 6) {
-        throw new Error('입력 항목이 너무 많습니다.');
+      if (cols.length !== 5) {
+        throw new Error('이름 / 체력 / 정신력 / 허기 / 물품 종류 5열을 입력해 주세요.');
       }
 
-      const usable = parseBoolean(cols[5]);
-      if (!usable && [2,3,4].some(i=>parseNumber(cols[i])!==0)) throw new Error('특수효과 물품은 정수 증감량을 설정할 수 없습니다.');
+      const usable = parseBoolean(cols[4]);
+      if (!usable && [1,2,3].some(i=>parseNumber(cols[i])!==0)) throw new Error('특수효과 물품은 정수 증감량을 설정할 수 없습니다.');
       rows.push({
         name: name,
-        description: cols[1]?.trim() || '',
-        health_effect: parseNumber(cols[2]),
-        mental_effect: parseNumber(cols[3]),
-        hunger_effect: parseNumber(cols[4]),
-        usable: parseBoolean(cols[5]),
+        health_effect: parseNumber(cols[1]),
+        mental_effect: parseNumber(cols[2]),
+        hunger_effect: parseNumber(cols[3]),
+        usable: parseBoolean(cols[4]),
         consumable: usable,
         item_type: usable ? 'consumable' : 'passive',
         passive_effects: {}
@@ -16252,7 +16222,7 @@ async function refreshPendingItems() {
   const label=document.createElement('span'); label.textContent=`${item.item_name} · ${item.applicants.join(', ')} (${item.request_count}개)`;
   const add=document.createElement('button'); add.textContent='목록에서 등록';
   add.onclick=()=>{if(inlineBusy())return; if([...newAdminItems.values()].some(x=>x.name===item.item_name))return;
-   const id='new-'+crypto.randomUUID(); newAdminItems.set(id,{id,name:item.item_name,description:'',health_effect:0,mental_effect:0,hunger_effect:0,usable:false,consumable:false,item_type:'passive',passive_effects:{}}); renderAdminItemTable();updateInlineItemStatus();};
+   const id='new-'+crypto.randomUUID(); newAdminItems.set(id,{id,name:item.item_name,health_effect:0,mental_effect:0,hunger_effect:0,usable:false,consumable:false,item_type:'passive',passive_effects:{}}); renderAdminItemTable();updateInlineItemStatus();};
   row.append(label,add);box.append(row);
  }
 }
