@@ -297,11 +297,48 @@ input {
 <header>
   <div class="logo">UNKNOWN / EXPLORATION</div>
 
-  <div class="login-area">
-    <span style="font-size:12px;color:#998c92;">GUEST</span>
-    <button type="button">로그인</button>
-  </div>
+<div class="login-area">
+  <span id="user-status" style="font-size:12px;color:#998c92;">GUEST</span>
+  <button type="button" id="login-open">로그인</button>
+  <button type="button" id="signup-open">회원가입</button>
+  <button type="button" id="logout-btn" style="display:none;">로그아웃</button>
+</div>
 </header>
+  <div id="auth-modal" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:1000;
+  background:rgba(0,0,0,0.8);
+  justify-content:center;
+  align-items:center;
+">
+  <div style="
+    width:320px;
+    padding:25px;
+    background:#21191d;
+    border:1px solid #854057;
+    border-radius:8px;
+  ">
+    <h3 id="auth-title" style="color:#bd6b83;">LOGIN</h3>
+
+    <input id="auth-email" type="email"
+      placeholder="이메일"
+      style="width:100%;margin-bottom:10px;">
+
+    <input id="auth-password" type="password"
+      placeholder="비밀번호"
+      style="width:100%;margin-bottom:15px;">
+
+    <button id="auth-submit" style="width:100%;">로그인</button>
+
+    <p id="auth-message" style="font-size:12px;color:#d88ca3;"></p>
+
+    <button id="auth-close" style="width:100%;margin-top:8px;">
+      닫기
+    </button>
+  </div>
+</div>
 
 <div class="dashboard">
 
