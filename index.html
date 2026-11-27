@@ -4476,27 +4476,45 @@ function startMapPlayersRefresh() {
 
     try {
 
-      const wasEXPLORING =
-        playerMovement?.status === 	'exploring';
+    
 
      await refreshMapLocationData();
 await loadPlayerMovement();
 await loadMapPlayers();
 
-            updateMovementProgress();
+               updateMovementProgress();
       updateLocationActionButtons();
 
+
+      // 플레이어 정보 자동 갱신
+
+      const { data: sessionData } =
+        await supabaseClient.auth.getSession();
+
+      const user = sessionData.session?.user;
+
+
       if (
-        wasEXPLORING &&
-        playerMovement?.status === 'idle'
+        user &&
+        (user.email || '').toLowerCase() !== ADMIN_EMAIL
       ) {
 
-        await loadActivityLogs();
+        await Promise.all([
+
+          refreshPlayerStats(),
+
+          loadInventory(),
+
+          loadActivityLogs()
+
+        ]);
+
+
+        // 미확인 조사 결과 확인
+
+        await loadUnreadExploreResult();
 
       }
-
-      // 미확인 조사 결과 확인
-      await loadUnreadExploreResult();
 
     } finally {
 
@@ -5556,6 +5574,56 @@ function getStatColor(value) {
 }
 
 // 능력치 수치 및 색상 업데이트
+  // 플레이어 능력치 자동 갱신
+
+async function refreshPlayerStats() {
+
+  const { data: sessionData } =
+    await supabaseClient.auth.getSession();
+
+  const user = sessionData.session?.user;
+
+  if (
+    !user ||
+    (user.email || '').toLowerCase() === ADMIN_EMAIL
+  ) return;
+
+
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .select('health, mental, hunger')
+    .eq('user_id', user.id)
+    .eq('approved', true)
+    .eq('status', 'approved')
+    .maybeSingle();
+
+
+  const { data: currentSession } =
+    await supabaseClient.auth.getSession();
+
+  if (
+    currentSession.session?.user?.id !== user.id
+  ) return;
+
+
+  if (error) {
+
+    console.error('능력치 자동 갱신 실패:', error);
+
+    return;
+
+  }
+
+  if (!data) return;
+
+
+  updatePlayerStat('health', data.health);
+
+  updatePlayerStat('mental', data.mental);
+
+  updatePlayerStat('hunger', data.hunger);
+
+}
 function updatePlayerStat(type, value) {
   const display = document.getElementById(`display-${type}`);
   const fill = document.getElementById(`${type}-fill`);
@@ -5673,16 +5741,31 @@ function renderInventory(items) {
     inventory.appendChild(item);
   });
 }
+  let lastInventorySnapshot = null;
+let inventoryRequest = 0;
 async function loadInventory() {
+
+  const requestId = ++inventoryRequest;
+
   const { data: sessionData } =
     await supabaseClient.auth.getSession();
 
   const user = sessionData.session?.user;
 
+
+  if (requestId !== inventoryRequest) return;
+
+
   if (!user) {
+
+    lastInventorySnapshot = null;
+
     renderInventory([]);
+
     return;
+
   }
+
 
   const { data, error } = await supabaseClient
     .from('inventory')
@@ -5702,19 +5785,46 @@ async function loadInventory() {
     `)
     .eq('user_id', user.id)
     .gt('quantity', 0)
-    .order('created_at', { ascending: true });
+    .order('created_at', { ascending: true })
+    .order('id');
+
+
+  const { data: currentSession } =
+    await supabaseClient.auth.getSession();
+
+
+  if (
+    requestId !== inventoryRequest ||
+    currentSession.session?.user?.id !== user.id
+  ) return;
+
 
   if (error) {
+
     console.error('인벤토리 조회 실패:', error);
 
-    document.getElementById('inventory-list').textContent =
-      '조회 오류: ' + error.message +
-      ' / 오류 코드: ' + error.code;
-
     return;
+
   }
 
-  renderInventory(data || []);
+
+  const items = data || [];
+
+  const snapshot = JSON.stringify({
+    userId: user.id,
+    items: items
+  });
+
+
+  // 변경 사항이 없으면 화면 유지
+
+  if (snapshot === lastInventorySnapshot) return;
+
+
+  renderInventory(items);
+
+  lastInventorySnapshot = snapshot;
+
 }
 // 아이템 사용
 async function usePlayerItem(itemId, itemName) {
@@ -5771,7 +5881,7 @@ async function usePlayerItem(itemId, itemName) {
 }
   // 활동 로그 조회 요청 구분
 let activityLogRequest = 0;
-
+let lastActivityLogSnapshot = null;
 // 플레이어 활동 로그 불러오기
 async function loadActivityLogs() {
   const requestId = ++activityLogRequest;
@@ -5814,7 +5924,18 @@ async function loadActivityLogs() {
     return;
   }
 
-renderActivityLogs(data || []);
+const logs = data || [];
+
+const snapshot = JSON.stringify({
+  userId: user.id,
+  logs: logs
+});
+
+if (snapshot === lastActivityLogSnapshot) return;
+
+renderActivityLogs(logs);
+
+lastActivityLogSnapshot = snapshot;
 }
 
 
@@ -5822,6 +5943,12 @@ renderActivityLogs(data || []);
 function renderActivityLogs(logs) {
   const list =
     document.getElementById('activity-log-list');
+
+  const previousScrollTop = list.scrollTop;
+
+  const previousScrollHeight = list.scrollHeight;
+
+  const wasAtTop = previousScrollTop <= 10;
 
   list.innerHTML = '';
 
@@ -5880,8 +6007,19 @@ function renderActivityLogs(logs) {
     list.appendChild(entry);
   });
 
-// 최신 기록이 있는 최상단으로 자동 스크롤
-list.scrollTop = 0;
+// 기존 로그를 읽고 있다면 스크롤 위치 유지
+
+if (wasAtTop) {
+
+  list.scrollTop = 0;
+
+} else {
+
+  list.scrollTop =
+    previousScrollTop +
+    (list.scrollHeight - previousScrollHeight);
+
+}
 }
 function renderPlayerProfile(profile) {
 
@@ -8813,6 +8951,20 @@ adminPlayerLocationSave.onclick = async () => {
 async function checkPlayerAccess() {
 
   resetExploreResult();
+
+  inventoryRequest++;
+  activityLogRequest++;
+
+  lastInventorySnapshot = null;
+  lastActivityLogSnapshot = null;
+
+  document.getElementById(
+    'inventory-list'
+  ).innerHTML = '';
+
+  document.getElementById(
+    'activity-log-list'
+  ).innerHTML = '';
 
   const { data: sessionData } =
     await supabaseClient.auth.getSession();
