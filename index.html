@@ -253,6 +253,52 @@ input {
   gap: 10px;
   font-size: 12px;
   color: #a99da2;
+  max-height: 350px;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  padding-right: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: #653448 #171416;
+}
+
+.log-type {
+  font-size: 11px;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.log-content {
+  margin-top: 4px;
+  color: #d8cbd0;
+  line-height: 1.6;
+}
+
+.log-type-MOVE {
+  color: #8297b2;
+}
+
+.log-type-EXPLORE {
+  color: #a397bc;
+}
+
+.log-type-DISCOVERY {
+  color: #c3a36d;
+}
+
+.log-type-ITEM {
+  color: #789184;
+}
+
+.log-type-STATUS {
+  color: #789184;
+}
+
+.log-type-WARNING {
+  color: #bd4969;
+}
+
+.log-type-SYSTEM {
+  color: #998c92;
 }
 
 .log-entry {
@@ -758,21 +804,15 @@ input {
       </div>
     </section>
 
-    <section class="log-panel">
-      <div class="widget-title">ACTIVITY LOG</div>
+   <section class="log-panel">
+  <div class="widget-title">ACTIVITY LOG</div>
 
-      <div class="log-list">
-        <div class="log-entry">
-          <span class="log-time">SYSTEM</span>
-          탐험 시스템에 접속했습니다.
-        </div>
-
-        <div class="log-entry">
-          <span class="log-time">SYSTEM</span>
-          플레이어 정보가 아직 등록되지 않았습니다.
-        </div>
-      </div>
-    </section>
+  <div class="log-list" id="activity-log-list">
+    <div class="log-entry">
+      활동 기록이 없습니다.
+    </div>
+  </div>
+</section>
 
   </main>
 
@@ -1223,6 +1263,16 @@ function renderInventory(items) {
   });
 }
 async function loadInventory() {
+  const { data: sessionData } =
+    await supabaseClient.auth.getSession();
+
+  const user = sessionData.session?.user;
+
+  if (!user) {
+    renderInventory([]);
+    return;
+  }
+
   const { data, error } = await supabaseClient
     .from('inventory')
     .select(`
@@ -1239,21 +1289,23 @@ async function loadInventory() {
         consumable
       )
     `)
+    .eq('user_id', user.id)
     .gt('quantity', 0)
     .order('created_at', { ascending: true });
 
-if (error) {
-  console.error('인벤토리 조회 실패:', error);
+  if (error) {
+    console.error('인벤토리 조회 실패:', error);
 
-  document.getElementById('inventory-list').textContent =
-    '조회 오류: ' + error.message +
-    ' / 오류 코드: ' + error.code;
+    document.getElementById('inventory-list').textContent =
+      '조회 오류: ' + error.message +
+      ' / 오류 코드: ' + error.code;
 
-  return;
-}
+    return;
+  }
+
   renderInventory(data || []);
 }
-  // 아이템 사용
+// 아이템 사용
 async function usePlayerItem(itemId, itemName) {
   const confirmed = confirm(
     `${itemName} 아이템을 사용하시겠습니까?`
@@ -1262,6 +1314,15 @@ async function usePlayerItem(itemId, itemName) {
   if (!confirmed) return;
 
   try {
+    const { data: sessionData } =
+      await supabaseClient.auth.getSession();
+
+    const user = sessionData.session?.user;
+
+    if (!user) {
+      throw new Error('로그인이 필요합니다.');
+    }
+
     const { error } = await supabaseClient.rpc(
       'use_player_item',
       {
@@ -1273,11 +1334,143 @@ async function usePlayerItem(itemId, itemName) {
 
     alert(`${itemName} 아이템을 사용했습니다.`);
 
-    await checkPlayerAccess();
+    // 변경된 능력치만 다시 조회
+    const { data: profile, error: profileError } =
+      await supabaseClient
+        .from('profiles')
+        .select('health, mental, hunger')
+        .eq('user_id', user.id)
+        .single();
+
+    if (!profileError && profile) {
+      updatePlayerStat('health', profile.health);
+      updatePlayerStat('mental', profile.mental);
+      updatePlayerStat('hunger', profile.hunger);
+    } else {
+      console.error('능력치 갱신 실패:', profileError);
+    }
+
+    // 인벤토리 및 활동 기록 갱신
+    await loadInventory();
+    await loadActivityLogs();
 
   } catch (error) {
-    alert('아이템 사용 실패: ' + error.message);
+    alert('아이템 처리 오류: ' + error.message);
   }
+}
+  // 활동 로그 조회 요청 구분
+let activityLogRequest = 0;
+
+// 플레이어 활동 로그 불러오기
+async function loadActivityLogs() {
+  const requestId = ++activityLogRequest;
+
+  const list =
+    document.getElementById('activity-log-list');
+
+  const { data: sessionData } =
+    await supabaseClient.auth.getSession();
+
+  const user = sessionData.session?.user;
+
+  if (requestId !== activityLogRequest) return;
+
+  if (!user) {
+    list.textContent = '활동 기록이 없습니다.';
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from('activity_logs')
+    .select('id, log_type, message, created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(200);
+
+  const { data: currentSession } =
+    await supabaseClient.auth.getSession();
+
+  if (
+    requestId !== activityLogRequest ||
+    currentSession.session?.user?.id !== user.id
+  ) return;
+
+  if (error) {
+    list.textContent =
+      '활동 기록 조회 실패: ' + error.message;
+
+    return;
+  }
+
+  renderActivityLogs((data || []).reverse());
+}
+
+
+// 활동 로그 화면 표시
+function renderActivityLogs(logs) {
+  const list =
+    document.getElementById('activity-log-list');
+
+  list.innerHTML = '';
+
+  if (!logs.length) {
+    list.textContent = '아직 활동 기록이 없습니다.';
+    return;
+  }
+
+  logs.forEach(log => {
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+
+    // 기록 시각
+    const time = document.createElement('span');
+    time.className = 'log-time';
+
+    time.textContent = new Date(
+      log.created_at
+    ).toLocaleString('ko-KR', {
+      timeZone: 'Asia/Seoul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+
+    // 기록 종류
+    const type = document.createElement('span');
+
+    const allowedTypes = [
+      'MOVE',
+      'EXPLORE',
+      'DISCOVERY',
+      'ITEM',
+      'STATUS',
+      'WARNING',
+      'SYSTEM'
+    ];
+
+    const logType = allowedTypes.includes(log.log_type)
+      ? log.log_type
+      : 'SYSTEM';
+
+    type.className = 'log-type log-type-' + logType;
+    type.textContent = '[' + logType + ']';
+
+    // 기록 내용
+    const content = document.createElement('div');
+    content.className = 'log-content';
+    content.textContent = log.message;
+
+    entry.append(time, type, content);
+    list.appendChild(entry);
+  });
+
+  // 최신 기록으로 자동 스크롤
+  list.scrollTop = list.scrollHeight;
 }
 function renderPlayerProfile(profile) {
 
@@ -1285,19 +1478,24 @@ function renderPlayerProfile(profile) {
   document.getElementById('display-player-name').textContent =
     profile.player_name;
 
-// 체력
-updatePlayerStat('health', profile.health);
+  // 체력
+  updatePlayerStat('health', profile.health);
 
-// 정신력
-updatePlayerStat('mental', profile.mental);
+  // 정신력
+  updatePlayerStat('mental', profile.mental);
 
-// 허기
-updatePlayerStat('hunger', profile.hunger);
+  // 허기
+  updatePlayerStat('hunger', profile.hunger);
+
   // 유서 표시
   document.getElementById('player-will-display').value =
     profile.will || '';
+
   // 아이템 목록 불러오기
   loadInventory();
+
+  // 활동 로그 불러오기
+  loadActivityLogs();
 }
   // 유서 저장
 document.getElementById('save-will-btn').addEventListener('click', async () => {
