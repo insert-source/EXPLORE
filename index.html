@@ -831,7 +831,7 @@ authSubmit.onclick = async () => {
       const { error: saveError } = await supabaseClient.rpc(
   'save_signup_profile',
   {
-    p_player_name: email,
+  p_player_name: '생존자',
     p_health: signupStats.health,
     p_mental: signupStats.mental,
     p_hunger: signupStats.hunger,
