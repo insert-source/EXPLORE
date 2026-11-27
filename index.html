@@ -1141,7 +1141,52 @@ top: 0;
       <input id="player-item2" type="text"
         placeholder="아이템 이름"
         style="width:100%;box-sizing:border-box;padding:11px;margin:8px 0 20px;background:#1b191b;color:#eee;border:1px solid #49303a;">
+<!-- PVP 참여 동의 -->
 
+<div style="
+  padding:14px;
+  margin:0 0 20px;
+  background:#171416;
+  border:1px solid #49303a;
+  border-radius:4px;
+">
+
+  <div style="
+    color:#bd6b83;
+    font-size:12px;
+    font-weight:bold;
+    letter-spacing:1px;
+    margin-bottom:12px;
+  ">
+    PVP AGREEMENT
+  </div>
+
+  <label style="
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:12px;
+    cursor:pointer;
+  ">
+
+    <input type="checkbox" id="signup-pvp-enabled">
+
+    다른 플레이어와의 PVP에 동의합니다.
+
+  </label>
+
+  <div style="
+    font-size:11px;
+    color:#998c92;
+    line-height:1.7;
+    margin-top:10px;
+  ">
+    ※ 동의하지 않을 경우 PVP 신청 및 수신이 불가능합니다.<br>
+    ※ 동의하더라도 개별 전투 신청을 거절할 수 있습니다.<br>
+    ※ 선물하기 및 훔치기는 PVP 동의 여부와 관계없이 적용됩니다.
+  </div>
+
+</div>
       <label style="color:#bd6b83;">LAST WILL / 유서</label>
       <textarea id="player-will"
         placeholder="마지막으로 남기고 싶은 말을 작성하세요..."
