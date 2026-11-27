@@ -3072,6 +3072,40 @@ label[for="admin-location-travel"] {
   line-height: 1.8;
   margin: 12px 0 20px;
 }
+  /* 장소 상세창 - 최대 능력치 소모량 */
+
+.location-detail-loss {
+  margin-top: 8px;
+  padding: 8px 0;
+  border-top: 1px solid #49303a;
+}
+
+.location-detail-loss-title {
+  text-align: center;
+  font-size: 10px;
+  opacity: 0.8;
+  margin-bottom: 6px;
+}
+
+.location-detail-loss-values {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  text-align: center;
+  font-size: 11px;
+  gap: 5px;
+}
+
+.location-detail-loss-values strong {
+  margin-left: 4px;
+}
+
+#location-detail-health-loss {
+  color: #d88ca3;
+}
+
+#location-detail-mental-loss {
+  color: #a99ac8;
+}
 </style>
 </head>
 
@@ -4389,24 +4423,7 @@ label[for="admin-location-travel"] {
       </div>
 
 
-      <!-- 위험도 -->
-
-      <div class="admin-location-field">
-
-        <label for="admin-location-danger">
-          위험도
-        </label>
-
-        <select id="admin-location-danger">
-
-          <option value="0">0 - 안전</option>
-          <option value="1">1 - 낮음</option>
-          <option value="2">2 - 보통</option>
-          <option value="3">3 - 높음</option>
-
-        </select>
-
-      </div>
+    
 
 <!-- 조사 능력치 감소 설정 -->
 
@@ -4881,7 +4898,27 @@ label[for="admin-location-travel"] {
 
   </div>
 
+<div class="location-detail-loss">
 
+  <div class="location-detail-loss-title">
+    최대 능력치 소모량
+  </div>
+
+  <div class="location-detail-loss-values">
+
+    <span>
+      체력
+      <strong id="location-detail-health-loss">0</strong>
+    </span>
+
+    <span>
+      정신력
+      <strong id="location-detail-mental-loss">0</strong>
+    </span>
+
+  </div>
+
+</div>
   <div class="location-detail-actions">
 
     <button id="location-move-btn"
@@ -9751,6 +9788,24 @@ function showLocationDetail(location) {
   ).textContent =
     `${location.explore_minutes}분`;
 
+  // 최대 능력치 소모량
+
+  const healthLossMax =
+    Number(location.health_loss_max ?? 0);
+
+  const mentalLossMax =
+    Number(location.mental_loss_max ?? 0);
+
+  document.getElementById(
+    'location-detail-health-loss'
+  ).textContent =
+    healthLossMax > 0 ? `-${healthLossMax}` : '0';
+
+  document.getElementById(
+    'location-detail-mental-loss'
+  ).textContent =
+    mentalLossMax > 0 ? `-${mentalLossMax}` : '0';
+
 
   // 선택된 장소 강조
   document.querySelectorAll('.map-location')
@@ -13223,9 +13278,7 @@ function resetLocationEditor() {
     'admin-location-explore'
   ).value = 10;
 
-  document.getElementById(
-    'admin-location-danger'
-  ).value = 0;
+
 
   document.getElementById(
     'admin-location-visible'
@@ -13289,9 +13342,7 @@ function editAdminLocation(location) {
     'admin-location-explore'
   ).value = location.explore_minutes;
 
-  document.getElementById(
-    'admin-location-danger'
-  ).value = location.danger_level;
+
 
   document.getElementById(
     'admin-location-visible'
@@ -13390,9 +13441,7 @@ const numberIds = [
       'admin-location-explore'
     ).value),
 
-   danger_level: Number(document.getElementById(
-  'admin-location-danger'
-).value),
+
 
 health_loss_chance: Number(document.getElementById(
   'admin-location-health-chance'
@@ -13476,14 +13525,7 @@ if (![
   return;
 
 }
-  if (![0, 1, 2, 3].includes(location.danger_level)) {
 
-    adminLocationMessage.textContent =
-      '올바른 위험도를 선택해 주세요.';
-
-    return;
-
-  }
 
 
   setLocationSaving(true);
