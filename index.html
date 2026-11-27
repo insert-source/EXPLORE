@@ -864,7 +864,7 @@ const authEmailForSupabase = isAdminLogin
       const { error: saveError } = await supabaseClient.rpc(
   'save_signup_profile',
   {
-  p_player_name: '생존자',
+p_player_name: loginName,
     p_health: signupStats.health,
     p_mental: signupStats.mental,
     p_hunger: signupStats.hunger,
@@ -877,10 +877,10 @@ const authEmailForSupabase = isAdminLogin
       if (saveError) throw saveError;
 
     } else {
-      result = await supabaseClient.auth.signInWithPassword({
-        email,
-        password
-      });
+ result = await supabaseClient.auth.signInWithPassword({
+  email: authEmailForSupabase,
+  password
+});
 
       if (result.error) throw result.error;
     }
