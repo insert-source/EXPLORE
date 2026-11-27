@@ -6343,7 +6343,11 @@ function showExploreResult(result) {
 
   // 조사 결과로 인한 사망 여부 확인
 
-  const causedDeath = result.caused_death === true;
+const causedDeath = result.caused_death === true;
+
+console.log('조사 결과 데이터:', result);
+console.log('사망 여부 원본:', result.caused_death);
+console.log('사망 여부 판정:', causedDeath);
 
 
   // 사망 결과 전용 디자인 적용
