@@ -626,32 +626,6 @@ document.getElementById('auth-close').onclick = () => {
 
 // 회원가입 및 로그인
 authSubmit.onclick = async () => {
-    // 회원가입 시 플레이어 정보 확인
-  if (authMode === 'signup') {
-    const playerName = document.getElementById('player-name').value.trim();
-    const health = Number(document.getElementById('player-health').value);
-    const mental = Number(document.getElementById('player-mental').value);
-    const hunger = Number(document.getElementById('player-hunger').value);
-
-    if (!playerName) {
-      authMessage.textContent = '플레이어 이름을 입력해 줘.';
-      return;
-    }
-
-    if (
-      health < 0 || health > 100 ||
-      mental < 0 || mental > 100 ||
-      hunger < 0 || hunger > 100
-    ) {
-      authMessage.textContent = '각 수치는 0~100 사이여야 해.';
-      return;
-    }
-
-    if (health + mental + hunger > 100) {
-      authMessage.textContent = '체력, 정신력, 허기의 합계는 100을 넘을 수 없어.';
-      return;
-    }
-  }
   const email = authEmail.value.trim();
   const password = authPassword.value;
 
@@ -672,22 +646,61 @@ authSubmit.onclick = async () => {
     let result;
 
     if (authMode === 'signup') {
+      const playerName = document.getElementById('player-name').value.trim();
+      const health = Number(document.getElementById('player-health').value);
+      const mental = Number(document.getElementById('player-mental').value);
+      const hunger = Number(document.getElementById('player-hunger').value);
+      const item1 = document.getElementById('player-item1').value.trim();
+      const item2 = document.getElementById('player-item2').value.trim();
+
+      if (!playerName) {
+        authMessage.textContent = '플레이어 이름을 입력해 줘.';
+        return;
+      }
+
+      if (
+        health < 0 || health > 100 ||
+        mental < 0 || mental > 100 ||
+        hunger < 0 || hunger > 100 ||
+        health + mental + hunger > 100
+      ) {
+        authMessage.textContent = '수치의 합계는 100 이하여야 해.';
+        return;
+      }
+
       result = await supabaseClient.auth.signUp({
         email,
         password
       });
+
+      if (result.error) throw result.error;
+
+      if (!result.data.session) {
+        authMessage.textContent = '가입 완료! 이메일 인증 설정을 확인해 줘.';
+        return;
+      }
+
+      const { error: saveError } = await supabaseClient.rpc(
+        'save_signup_profile',
+        {
+          p_player_name: playerName,
+          p_health: health,
+          p_mental: mental,
+          p_hunger: hunger,
+          p_item1: item1,
+          p_item2: item2
+        }
+      );
+
+      if (saveError) throw saveError;
+
     } else {
       result = await supabaseClient.auth.signInWithPassword({
         email,
         password
       });
-    }
 
-    if (result.error) throw result.error;
-
-    if (authMode === 'signup' && !result.data.session) {
-      authMessage.textContent = '가입 완료! 이메일 인증 설정을 확인해 줘.';
-      return;
+      if (result.error) throw result.error;
     }
 
     authModal.style.display = 'none';
