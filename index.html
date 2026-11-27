@@ -2173,6 +2173,10 @@ label[for="admin-location-travel"] {
         style="display:none;">
   거점 관리
 </button>
+  <button id="character-admin-open"
+        style="display:none;">
+  캐릭터 관리
+</button>
   <button type="button" id="logout-btn" style="display:none;">로그아웃</button>
 </div>
 </header>
@@ -10476,6 +10480,9 @@ statAdminPanel.style.display = 'none';
 locationAdminOpen.style.display = 'none';
 locationAdminPanel.style.display = 'none';
   playerLocationAdminOpen.style.display = 'none';
+  document.getElementById(
+  'character-admin-open'
+).style.display = 'none';
 playerLocationAdminPanel.style.display = 'none';
 cancelLocationPicking(false);
   closeLocationDetail();
@@ -10560,6 +10567,9 @@ itemAdminOpen.style.display = 'inline-block';
 statAdminOpen.style.display = 'inline-block';
 locationAdminOpen.style.display = 'inline-block';
    playerLocationAdminOpen.style.display = 'inline-block';
+  document.getElementById(
+  'character-admin-open'
+).style.display = 'inline-block';
   renderPlayerProfile(profile);
 
   return;
