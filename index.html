@@ -4086,6 +4086,8 @@ max-width:calc(100vw - 30px);
 <div style="display:flex;gap:8px;margin-bottom:10px;">
 <button type="button" id="admin-item-add">+ 아이템 추가</button>
 <button type="button" id="admin-item-bulk-open">일괄 등록</button>
+<button type="button" id="pending-items-open">등록 대기</button>
+</div><div id="pending-items-list" style="display:none;margin-bottom:12px"></div><div style="display:none">
 </div>
 <div style="display:flex; gap:8px; margin-bottom:10px;">
 
@@ -12245,6 +12247,7 @@ async function loadAdminItems() {
 
   if (data.some(item => item.id === previous)) select.value = previous;
   renderAdminItemTable();
+  await refreshPendingItems();
 
 }
 
@@ -15902,7 +15905,7 @@ async function loadAdminUsers() {
 
   const { data, error } = await supabaseClient
     .from('profiles')
-.select('user_id, email, player_name, status, created_at, item1, item2, signup_completed, initial_items_granted')
+.select('user_id, email, player_name, status, created_at, item1, item2, signup_completed, initial_items_granted, initial_items_reviewed, reviewed_initial_items')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -16015,7 +16018,7 @@ approve.style.fontWeight = player.status === 'approved'
   : 'normal';
       approve.disabled =
   !player.signup_completed ||
-  player.status === 'approved';
+  player.status === 'approved' || (!player.initial_items_granted && !player.initial_items_reviewed);
 
 if (!player.signup_completed) {
   approve.title = '초기 캐릭터 등록이 완료되지 않았습니다.';
@@ -16066,6 +16069,15 @@ deleteBtn.onclick = () => {
     player.player_name || '이름 미등록'
   );
 };
+if (player.signup_completed && !player.initial_items_granted && player.status !== 'approved') {
+  const review = document.createElement('button');
+  review.textContent = player.initial_items_reviewed ? '소지품 재검토' : '소지품 검토';
+  review.onclick = () => openInitialReview(player);
+  buttons.append(review);
+  const badge = document.createElement('div');
+  badge.textContent = player.initial_items_reviewed ? '소지품 검토 완료' : '소지품 검토 필요';
+  info.append(badge);
+}
 buttons.append(approve, reject, deleteBtn);
 
       row.appendChild(buttons);
@@ -16148,6 +16160,49 @@ supabaseClient.auth.onAuthStateChange((event) => {
   }
 
 });
+
+
+async function refreshPendingItems() {
+ const box = document.getElementById('pending-items-list');
+ const btn = document.getElementById('pending-items-open');
+ const {data,error} = await supabaseClient.rpc('admin_get_pending_items');
+ box.replaceChildren();
+ if(error){box.textContent=error.message;return;}
+ btn.textContent=`등록 대기 (${data.length})`;
+ if(!data.length) box.textContent='등록 대기 아이템 없음';
+ for(const item of data){
+  const row=document.createElement('div'); row.className='admin-location-row';
+  const label=document.createElement('span'); label.textContent=`${item.item_name} · ${item.applicants.join(', ')} (${item.request_count}개)`;
+  const add=document.createElement('button'); add.textContent='목록에서 등록';
+  add.onclick=()=>{if(inlineBusy())return; if([...newAdminItems.values()].some(x=>x.name===item.item_name))return;
+   const id='new-'+crypto.randomUUID(); newAdminItems.set(id,{id,name:item.item_name,description:'',health_effect:0,mental_effect:0,hunger_effect:0,usable:false,consumable:false}); renderAdminItemTable();updateInlineItemStatus();};
+  row.append(label,add);box.append(row);
+ }
+}
+document.getElementById('pending-items-open').onclick=async()=>{const box=document.getElementById('pending-items-list');box.style.display=box.style.display==='none'?'block':'none';if(box.style.display==='block')await refreshPendingItems();};
+async function openInitialReview(player){
+ const {data:items,error}=await supabaseClient.from('items').select('id,name').order('name');
+ if(error){alert(error.message);return;}
+ const overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0;background:#000b;z-index:30000;display:flex;align-items:center;justify-content:center;padding:15px';
+ const box=document.createElement('div');box.style.cssText='background:#211a1e;border:1px solid #653448;padding:20px;width:520px;max-width:100%;max-height:85vh;overflow:auto';overlay.append(box);
+ const title=document.createElement('h3');title.textContent=player.player_name+' · 소지품 검토';box.append(title);
+ const note=document.createElement('p');note.textContent='신청: '+[player.item1,player.item2].filter(Boolean).join(' / ')+' — 미등록 아이템은 아이템 관리에서 등록하거나 지급 목록에서 삭제하세요.';box.append(note);
+ const rows=document.createElement('div');box.append(rows);
+ function addRow(id='',quantity=1,original=''){
+  const row=document.createElement('div');row.style.cssText='display:flex;gap:8px;margin:8px 0';
+  const select=document.createElement('select');select.style.cssText='flex:1;min-width:0;background:#171416;color:#eee';
+  select.add(new Option(original?'미등록: '+original:'아이템 선택',''));
+  items.forEach(i=>select.add(new Option(i.name,i.id)));select.value=id;
+  const qty=document.createElement('input');qty.type='number';qty.min=1;qty.max=999;qty.value=quantity;qty.style.width='70px';
+  const del=document.createElement('button');del.textContent='삭제';del.onclick=()=>row.remove();row.append(select,qty,del);rows.append(row);
+ }
+ if(player.initial_items_reviewed){for(const r of player.reviewed_initial_items||[])addRow(r.item_id,r.quantity,'삭제된 아이템');}
+ else for(const name of [player.item1,player.item2].map(x=>(x||'').trim()).filter(Boolean))addRow(items.find(i=>i.name===name)?.id||'',1,name);
+ const add=document.createElement('button');add.textContent='+ 지급 아이템 추가';add.onclick=()=>addRow();box.append(add);
+ const save=document.createElement('button');save.textContent='검토 완료';const close=document.createElement('button');close.textContent='취소';close.onclick=()=>overlay.remove();box.append(save,close);
+ save.onclick=async()=>{const payload=[];for(const row of rows.children){const id=row.querySelector('select').value;const q=row.querySelector('input').valueAsNumber;if(!id||!Number.isInteger(q)||q<1||q>999){alert('아이템과 수량을 확인하세요.');return;}payload.push({item_id:id,quantity:q});}if(!confirm('이 목록으로 지급을 확정할까요?'))return;save.disabled=true;close.disabled=true;const {error}=await supabaseClient.rpc('admin_review_initial_items',{p_user_id:player.user_id,p_items:payload});if(error){alert(error.message);save.disabled=false;close.disabled=false;return;}overlay.remove();await loadAdminUsers();};
+ document.body.append(overlay);
+}
 
 // 최초 접속
 checkPlayerAccess();
