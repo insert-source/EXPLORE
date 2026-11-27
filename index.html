@@ -2915,6 +2915,26 @@ label[for="admin-location-travel"] {
 #player-will-display:read-only {
   cursor: default;
 }
+  /* 사망 조사 결과 팝업 */
+
+#explore-result-modal.is-fatal .explore-result-box {
+  border-color: #9b304d;
+  box-shadow: 0 0 40px rgba(155, 48, 77, 0.3);
+}
+
+#explore-result-modal.is-fatal .explore-result-label {
+  color: #d88ca3;
+}
+
+#explore-result-modal.is-fatal .explore-result-return {
+  color: #d88ca3;
+  background: #351b26;
+  border: 1px solid #653448;
+  border-radius: 4px;
+  padding: 12px;
+  font-weight: bold;
+  line-height: 1.8;
+}
 </style>
 </head>
 
@@ -3229,9 +3249,10 @@ label[for="admin-location-travel"] {
 
   <div class="explore-result-box">
 
-    <div class="explore-result-label">
-      EXPLORATION COMPLETE
-    </div>
+    <div class="explore-result-label"
+     id="explore-result-label">
+  EXPLORATION COMPLETE
+</div>
 
     <div id="explore-result-location"></div>
 
@@ -3262,9 +3283,10 @@ label[for="admin-location-travel"] {
 
     </div>
 
-    <div class="explore-result-return">
-      거점으로 복귀했습니다.
-    </div>
+ <div class="explore-result-return"
+     id="explore-result-return">
+  거점으로 복귀했습니다.
+</div>
 
     <button type="button"
             id="explore-result-confirm">
@@ -6293,6 +6315,8 @@ function resetExploreResult() {
 
   exploreResultRequest++;
 
+  exploreResultModal.classList.remove('is-fatal');
+
   currentExploreResult = null;
 
   exploreResultUserId = null;
@@ -6315,6 +6339,37 @@ function resetExploreResult() {
 function showExploreResult(result) {
 
   currentExploreResult = result;
+
+
+  // 조사 결과로 인한 사망 여부 확인
+
+  const causedDeath = result.caused_death === true;
+
+
+  // 사망 결과 전용 디자인 적용
+
+  exploreResultModal.classList.toggle(
+    'is-fatal',
+    causedDeath
+  );
+
+
+  // 조사 결과 제목 변경
+
+  document.getElementById(
+    'explore-result-label'
+  ).textContent = causedDeath
+    ? 'EXPLORATION FAILED'
+    : 'EXPLORATION COMPLETE';
+
+
+  // 거점 복귀 및 사망 안내
+
+  document.getElementById(
+    'explore-result-return'
+  ).textContent = causedDeath
+    ? '조사 도중 사망했습니다. 거점으로 복귀하지 못했습니다.'
+    : '거점으로 복귀했습니다.';
 
   document.getElementById(
     'explore-result-location'
