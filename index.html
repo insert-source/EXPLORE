@@ -6899,7 +6899,7 @@ result = await supabaseClient.auth.signInWithPassword({
 
 if (result.error) throw result.error;
 
-  const { error: profileError } = await supabaseClient.rpc(
+const { error: saveError } = await supabaseClient.rpc(
   'save_signup_profile',
   {
     p_player_name: playerName,
