@@ -211,12 +211,13 @@ input {
 }
 
 /* 무전기 */
+
 .radio-panel {
-  height: 65px;
+  min-height: 65px;
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 0 16px;
+  gap: 12px;
+  padding: 12px 16px;
   background: #21191d;
   border: 1px solid #653448;
   border-radius: 6px;
@@ -228,14 +229,87 @@ input {
   font-size: 12px;
   font-weight: bold;
   white-space: nowrap;
+  letter-spacing: 1px;
 }
 
 .radio-message {
+  flex: 1;
+  min-width: 0;
   font-size: 12px;
   color: #d8cbd0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+#radio-time {
+  font-size: 10px;
+  color: #998c92;
+  white-space: nowrap;
+}
+
+#radio-new {
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: #653448;
+  color: #f2b4c5;
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.radio-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.radio-actions button {
+  padding: 6px 10px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+#radio-history-open {
+  background: #302129;
+  border-color: #653448;
+  color: #d8cbd0;
+}
+
+#radio-send-open {
+  background: #36594b;
+  border-color: #789184;
+  color: #b5dfc5;
+}
+
+
+/* 새로운 무전 수신 효과 */
+
+.radio-panel.has-unread {
+  animation: radio-pulse 2s ease-in-out infinite;
+}
+
+@keyframes radio-pulse {
+
+  0%, 100% {
+    border-color: #653448;
+    box-shadow: 0 0 0 rgba(189, 107, 131, 0);
+  }
+
+  50% {
+    border-color: #d88ca3;
+    box-shadow: 0 0 12px rgba(189, 107, 131, 0.35);
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .radio-panel.has-unread {
+    animation: none;
+    border-color: #d88ca3;
+  }
+
 }
 
 /* 활동 로그 */
@@ -2219,6 +2293,205 @@ label[for="admin-location-travel"] {
 #player-name-message:empty {
   display: none;
 }
+  /* 무전 기록 및 송신 팝업 */
+
+#radio-history-modal,
+#radio-editor-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.75);
+}
+
+#radio-history-modal {
+  z-index: 15000;
+}
+
+#radio-editor-modal {
+  z-index: 15001;
+}
+
+.radio-box {
+  width: 500px;
+  max-width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 22px;
+  background: #211a1e;
+  border: 1px solid #653448;
+  border-radius: 6px;
+  box-shadow: 0 5px 30px rgba(0, 0, 0, 0.5);
+}
+
+.radio-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #49303a;
+  color: #bd6b83;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+.radio-header button {
+  padding: 0 5px;
+  background: transparent;
+  border: none;
+  color: #998c92;
+  font-size: 22px;
+}
+
+#radio-history-list {
+  max-height: 55vh;
+  overflow-y: auto;
+  padding-right: 5px;
+  color: #998c92;
+  font-size: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: #653448 #171416;
+}
+
+.radio-entry {
+  padding: 15px;
+  margin-bottom: 8px;
+  background: #171416;
+  border: 1px solid #49303a;
+  border-radius: 4px;
+}
+
+.radio-entry.is-unread {
+  border-left: 3px solid #bd6b83;
+}
+
+.radio-entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.radio-entry-time {
+  color: #bd6b83;
+  font-size: 11px;
+}
+
+.radio-entry-content {
+  color: #d8cbd0;
+  font-size: 13px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.radio-entry-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.radio-entry-actions button {
+  padding: 4px 8px;
+  font-size: 10px;
+}
+
+.radio-entry-delete {
+  background: #54283a;
+  color: #f2b4c5;
+}
+
+
+/* 관리자 무전 입력창 */
+
+.radio-editor-box {
+  width: 440px;
+}
+
+.radio-editor-label {
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: #bcaab2;
+}
+
+#radio-editor-content {
+  width: 100%;
+  min-height: 180px;
+  padding: 12px;
+  resize: vertical;
+  background: #141114;
+  border: 1px solid #49303a;
+  border-radius: 4px;
+  color: #e8e1e4;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.radio-editor-notice {
+  margin-top: 10px;
+  color: #998c92;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.radio-editor-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.radio-editor-actions button {
+  flex: 1;
+  padding: 10px;
+}
+
+#radio-editor-submit {
+  background: #36594b;
+  border-color: #789184;
+  color: #b5dfc5;
+}
+
+#radio-history-message,
+#radio-editor-message {
+  margin-top: 10px;
+  color: #d88ca3;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+#radio-history-message:empty,
+#radio-editor-message:empty {
+  display: none;
+}
+
+#radio-history-modal button:disabled,
+#radio-editor-modal button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (max-width: 700px) {
+
+  .radio-panel {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .radio-message {
+    flex-basis: 100%;
+    order: 5;
+  }
+
+  .radio-actions {
+    margin-left: auto;
+  }
+
+}
 </style>
 </head>
 
@@ -2380,6 +2653,79 @@ label[for="admin-location-travel"] {
     </button>
 
     <p id="steal-alert-message"></p>
+
+  </div>
+
+</div>
+  <!-- 무전 기록창 -->
+
+<div id="radio-history-modal">
+
+  <div class="radio-box">
+
+    <div class="radio-header">
+      <span>RADIO ARCHIVE</span>
+
+      <button type="button" id="radio-history-close">
+        ×
+      </button>
+    </div>
+
+    <div id="radio-history-list">
+      수신된 무전이 없습니다.
+    </div>
+
+    <div id="radio-history-message"></div>
+
+  </div>
+
+</div>
+
+
+<!-- 관리자 무전 송신 및 수정창 -->
+
+<div id="radio-editor-modal">
+
+  <div class="radio-box radio-editor-box">
+
+    <div class="radio-header">
+
+      <span id="radio-editor-title">
+        RADIO TRANSMISSION
+      </span>
+
+      <button type="button" id="radio-editor-close">
+        ×
+      </button>
+
+    </div>
+
+    <div class="radio-editor-label">
+      무전 내용
+    </div>
+
+    <textarea
+      id="radio-editor-content"
+      placeholder="송출할 무전 내용을 입력하세요."
+    ></textarea>
+
+    <div class="radio-editor-notice">
+      모든 플레이어에게 익명으로 송출됩니다.
+    </div>
+
+    <div class="radio-editor-actions">
+
+      <button type="button" id="radio-editor-cancel">
+        취소
+      </button>
+
+      <button type="button" id="radio-editor-submit">
+        송신
+      </button>
+
+    </div>
+
+    <div id="radio-editor-message"></div>
 
   </div>
 
@@ -3780,12 +4126,37 @@ label[for="admin-location-travel"] {
       </div>
     </section>
 
-    <section class="radio-panel">
-      <div class="radio-label">📻 RADIO</div>
-      <div class="radio-message">
-        현재 수신된 무전 메시지가 없습니다.
-      </div>
-    </section>
+   <!-- 무전기 -->
+<section class="radio-panel" id="radio-panel">
+
+  <div class="radio-label">
+    📻 RADIO
+  </div>
+
+  <span id="radio-new" style="display:none;">
+    NEW
+  </span>
+
+  <div id="radio-time"></div>
+
+  <div class="radio-message" id="radio-message">
+    수신된 무전이 없습니다.
+  </div>
+
+  <div class="radio-actions">
+
+    <button type="button" id="radio-history-open">
+      기록 보기
+    </button>
+
+    <button type="button" id="radio-send-open"
+      style="display:none;">
+      송신
+    </button>
+
+  </div>
+
+</section>
 
    <section class="log-panel">
   <div class="widget-title">ACTIVITY LOG</div>
