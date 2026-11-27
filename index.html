@@ -981,6 +981,167 @@ function updatePlayerStat(type, value) {
   fill.style.width = `${value}%`;
   fill.style.backgroundColor = color;
 }
+  // 플레이어 인벤토리 불러오기
+  // 인벤토리 화면 표시
+function renderInventory(items) {
+  const inventory = document.getElementById('inventory-list');
+  inventory.innerHTML = '';
+
+  if (items.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'item';
+    empty.textContent = '보유 아이템 없음';
+    inventory.appendChild(empty);
+    return;
+  }
+
+  items.forEach(entry => {
+    const info = entry.items;
+
+    if (!info) return;
+
+    const item = document.createElement('div');
+    item.className = 'item';
+    item.style.flexDirection = 'column';
+    item.style.alignItems = 'stretch';
+    item.style.gap = '6px';
+
+    // 아이템 이름 및 개수
+    const top = document.createElement('div');
+    top.style.display = 'flex';
+    top.style.justifyContent = 'space-between';
+    top.style.alignItems = 'center';
+
+    const name = document.createElement('span');
+    name.textContent = info.name;
+
+    const count = document.createElement('span');
+    count.className = 'item-count';
+    count.textContent = `× ${entry.quantity}`;
+
+    top.append(name, count);
+    item.appendChild(top);
+
+    // 아이템 설명
+    const description = document.createElement('div');
+    description.style.fontSize = '11px';
+    description.style.color = '#998c92';
+    description.textContent =
+      info.description || '개인 소지품';
+
+    item.appendChild(description);
+
+    // 아이템 효과
+    const effects = [];
+
+    if (info.health_effect !== 0) {
+      effects.push(
+        `체력 ${info.health_effect > 0 ? '+' : ''}${info.health_effect}`
+      );
+    }
+
+    if (info.mental_effect !== 0) {
+      effects.push(
+        `정신력 ${info.mental_effect > 0 ? '+' : ''}${info.mental_effect}`
+      );
+    }
+
+    if (info.hunger_effect !== 0) {
+      effects.push(
+        `허기 ${info.hunger_effect > 0 ? '+' : ''}${info.hunger_effect}`
+      );
+    }
+
+    if (effects.length > 0) {
+      const effect = document.createElement('div');
+      effect.style.fontSize = '11px';
+      effect.style.color = '#789184';
+      effect.textContent = effects.join(' / ');
+
+      item.appendChild(effect);
+    }
+
+    // 사용 버튼
+    if (info.usable) {
+      const useBtn = document.createElement('button');
+
+      useBtn.type = 'button';
+      useBtn.textContent = '사용';
+      useBtn.style.alignSelf = 'flex-end';
+      useBtn.style.fontSize = '11px';
+
+      useBtn.onclick = async () => {
+        useBtn.disabled = true;
+
+        try {
+          await usePlayerItem(entry.item_id, info.name);
+        } finally {
+          useBtn.disabled = false;
+        }
+      };
+
+      item.appendChild(useBtn);
+    }
+
+    inventory.appendChild(item);
+  });
+}
+async function loadInventory() {
+  const { data, error } = await supabaseClient
+    .from('inventory')
+    .select(`
+      id,
+      item_id,
+      quantity,
+      items (
+        name,
+        description,
+        health_effect,
+        mental_effect,
+        hunger_effect,
+        usable,
+        consumable
+      )
+    `)
+    .gt('quantity', 0)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('인벤토리 조회 실패:', error);
+
+    document.getElementById('inventory-list').textContent =
+      '아이템 정보를 불러오지 못했습니다.';
+
+    return;
+  }
+  renderInventory(data || []);
+}
+  // 아이템 사용
+async function usePlayerItem(itemId, itemName) {
+  const confirmed = confirm(
+    `${itemName} 아이템을 사용하시겠습니까?`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    const { error } = await supabaseClient.rpc(
+      'use_player_item',
+      {
+        p_item_id: itemId
+      }
+    );
+
+    if (error) throw error;
+
+    alert(`${itemName} 아이템을 사용했습니다.`);
+
+    await checkPlayerAccess();
+
+  } catch (error) {
+    alert('아이템 사용 실패: ' + error.message);
+  }
+}
 function renderPlayerProfile(profile) {
 
   // 플레이어 이름
@@ -998,35 +1159,8 @@ updatePlayerStat('hunger', profile.hunger);
   // 유서 표시
   document.getElementById('player-will-display').value =
     profile.will || '';
-  // 아이템 목록
-  const inventory = document.getElementById('inventory-list');
-  inventory.innerHTML = '';
-
-  const items = [profile.item1, profile.item2]
-    .filter(item => item && item.trim() !== '');
-
-  if (items.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'item';
-    empty.textContent = '보유 아이템 없음';
-    inventory.appendChild(empty);
-    return;
-  }
-
-  items.forEach(itemName => {
-    const item = document.createElement('div');
-    item.className = 'item';
-
-    const name = document.createElement('span');
-    name.textContent = itemName;
-
-    const count = document.createElement('span');
-    count.className = 'item-count';
-    count.textContent = '1개';
-
-    item.append(name, count);
-    inventory.appendChild(item);
-  });
+  // 아이템 목록 불러오기
+  loadInventory();
 }
   // 유서 저장
 document.getElementById('save-will-btn').addEventListener('click', async () => {
