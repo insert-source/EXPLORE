@@ -371,6 +371,12 @@ input {
 
     <!-- 회원가입 전용 -->
     <div id="signup-fields" style="display:none;">
+  
+
+<label>캐릭터 이름</label>
+<input id="player-name" type="text"
+  placeholder="로그인에 사용할 캐릭터 이름"
+  style="width:100%;box-sizing:border-box;padding:11px;margin:8px 0 15px;background:#1b191b;color:#eee;border:1px solid #49303a;">
 
       <div style="border-top:1px solid #49303a;margin:10px 0 20px;"></div>
 
@@ -774,11 +780,39 @@ signupOpen.onclick = () => {
 document.getElementById('auth-close').onclick = () => {
   authModal.style.display = 'none';
 };
+// 캐릭터 이름을 내부 인증용 주소로 변환
+async function makePlayerAuthEmail(playerName) {
+  const normalizedName = playerName
+    .normalize('NFKC')
+    .trim()
+    .toLowerCase();
 
+  const data = new TextEncoder().encode(normalizedName);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+
+  const hash = Array.from(new Uint8Array(hashBuffer))
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('');
+
+  return `player-${hash}@players.invalid`;
+}
 // 회원가입 및 로그인
 authSubmit.onclick = async () => {
-  const email = authEmail.value.trim();
-  const password = authPassword.value;
+ const loginName = authEmail.value.trim();
+const password = authPassword.value;
+
+if (!loginName) {
+  authMessage.textContent = '캐릭터 이름을 입력해 줘.';
+  return;
+}
+
+// 관리자는 기존 이메일 로그인 유지
+const isAdminLogin =
+  loginName.toLowerCase() === 'ssuejjang1@gmail.com';
+
+const authEmailForSupabase = isAdminLogin
+  ? 'ssuejjang1@gmail.com'
+  : await makePlayerAuthEmail(loginName);
 
   if (!email || !password) {
     authMessage.textContent = '이메일과 비밀번호를 입력해 줘.';
@@ -816,11 +850,10 @@ authSubmit.onclick = async () => {
         return;
       }
 
-      result = await supabaseClient.auth.signUp({
-        email,
-        password
-      });
-
+   result = await supabaseClient.auth.signUp({
+  email: authEmailForSupabase,
+  password
+});
       if (result.error) throw result.error;
 
       if (!result.data.session) {
