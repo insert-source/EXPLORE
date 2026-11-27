@@ -520,7 +520,122 @@ map.addEventListener("wheel", (e) => {
 
 updateMap();
 </script>
+<script>
+// 로그인 창 요소
+const authModal = document.getElementById('auth-modal');
+const authTitle = document.getElementById('auth-title');
+const authEmail = document.getElementById('auth-email');
+const authPassword = document.getElementById('auth-password');
+const authSubmit = document.getElementById('auth-submit');
+const authMessage = document.getElementById('auth-message');
 
+let authMode = 'login';
+
+// 로그인 창 열기
+document.getElementById('login-open').onclick = () => {
+  authMode = 'login';
+  authTitle.textContent = 'LOGIN';
+  authSubmit.textContent = '로그인';
+  authMessage.textContent = '';
+  authModal.style.display = 'flex';
+};
+
+// 회원가입 창 열기
+document.getElementById('signup-open').onclick = () => {
+  authMode = 'signup';
+  authTitle.textContent = 'SIGN UP';
+  authSubmit.textContent = '회원가입';
+  authMessage.textContent = '';
+  authModal.style.display = 'flex';
+};
+
+// 로그인 창 닫기
+document.getElementById('auth-close').onclick = () => {
+  authModal.style.display = 'none';
+};
+
+// 로그인 / 회원가입 실행
+authSubmit.onclick = async () => {
+  const email = authEmail.value.trim();
+  const password = authPassword.value;
+
+  if (!email || !password) {
+    authMessage.textContent = '이메일과 비밀번호를 입력해 줘.';
+    return;
+  }
+
+  if (password.length < 6) {
+    authMessage.textContent = '비밀번호는 6자 이상이어야 해.';
+    return;
+  }
+
+  authSubmit.disabled = true;
+  authMessage.textContent = '처리 중...';
+
+  let result;
+
+  if (authMode === 'signup') {
+    result = await supabaseClient.auth.signUp({
+      email,
+      password
+    });
+  } else {
+    result = await supabaseClient.auth.signInWithPassword({
+      email,
+      password
+    });
+  }
+
+  authSubmit.disabled = false;
+
+  if (result.error) {
+    authMessage.textContent = result.error.message;
+    return;
+  }
+
+  if (authMode === 'signup' && !result.data.session) {
+    authMessage.textContent = '가입 완료! 이메일 인증 설정을 확인해 줘.';
+    return;
+  }
+
+  authMessage.textContent = '로그인 성공!';
+  authModal.style.display = 'none';
+
+  updateLoginStatus();
+};
+
+// 로그인 상태 표시
+async function updateLoginStatus() {
+  const { data } = await supabaseClient.auth.getSession();
+  const user = data.session?.user;
+
+  document.getElementById('user-status').textContent =
+    user ? user.email : 'GUEST';
+
+  document.getElementById('login-open').style.display =
+    user ? 'none' : 'inline-block';
+
+  document.getElementById('signup-open').style.display =
+    user ? 'none' : 'inline-block';
+
+  document.getElementById('logout-btn').style.display =
+    user ? 'inline-block' : 'none';
+}
+
+// 로그아웃
+document.getElementById('logout-btn').onclick = async () => {
+  await supabaseClient.auth.signOut();
+  updateLoginStatus();
+};
+
+// 로그인 상태 변경 감지
+supabaseClient.auth.onAuthStateChange(() => {
+  updateLoginStatus();
+});
+
+// 페이지 접속 시 로그인 상태 확인
+updateLoginStatus();
+</script>
 </body>
 </html>
-```
+
