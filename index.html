@@ -6915,7 +6915,7 @@ if (result.error) throw result.error;
 const { error: saveError } = await supabaseClient.rpc(
   'save_signup_profile',
   {
-    p_player_name: playerName,
+p_player_name: loginName,
     p_health: health,
     p_mental: mental,
     p_hunger: hunger,
