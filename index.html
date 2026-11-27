@@ -804,10 +804,7 @@ authSubmit.onclick = async () => {
   const item2 = document.getElementById('player-item2').value.trim();
   const will = document.getElementById('player-will').value.trim();
 
-      if (!playerName) {
-        authMessage.textContent = '플레이어 이름을 입력해 줘.';
-        return;
-      }
+ 
 
       if (
         health < 0 || health > 100 ||
