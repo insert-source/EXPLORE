@@ -576,8 +576,8 @@ input {
 #location-detail-panel {
   display: none;
   position: absolute;
-  right: 15px;
-  bottom: 40px;
+left: 0;
+top: 0;
   width: 280px;
   max-width: calc(100% - 30px);
   max-height: 75%;
@@ -1873,10 +1873,11 @@ function updateMap() {
   coordinates.textContent =
     `X : ${Math.round(-x / size)} / Y : ${Math.round(-y / size)} / ZOOM : ${Math.round(scale * 100)}%`;
 
-  updateMapLocationPositions();
+    updateMapLocationPositions();
+
+  updateLocationDetailPosition();
 
 }
-
 
 // 장소 아이콘 위치 갱신
 function updateMapLocationPositions() {
@@ -1947,9 +1948,60 @@ let selectedMapLocation = null;
 
 const locationDetailPanel =
   document.getElementById('location-detail-panel');
-
+// 화면 크기 변경 시 상세창 위치 재계산
+window.addEventListener(
+  'resize',
+  updateLocationDetailPosition
+);
 
 // 장소 상세 정보 열기
+  // 장소 상세창 위치 자동 계산
+function updateLocationDetailPosition() {
+
+  if (!selectedMapLocation) return;
+
+  if (locationDetailPanel.style.display === 'none') return;
+
+  const size = 50 * scale;
+
+  const markerX = x + selectedMapLocation.x * size;
+  const markerY = y + selectedMapLocation.y * size;
+
+  const mapWidth = map.clientWidth;
+  const mapHeight = map.clientHeight;
+
+  const panelWidth = locationDetailPanel.offsetWidth;
+  const panelHeight = locationDetailPanel.offsetHeight;
+
+  const gap = 25;
+  const margin = 10;
+
+  // 장소 오른쪽에 상세창 배치
+  let left = markerX + gap;
+  let top = markerY - 20;
+
+  // 오른쪽 공간이 부족하면 왼쪽에 배치
+  if (left + panelWidth > mapWidth - margin) {
+
+    left = markerX - panelWidth - gap;
+
+  }
+
+  // 지도 영역을 벗어나지 않도록 제한
+  left = Math.max(
+    margin,
+    Math.min(left, mapWidth - panelWidth - margin)
+  );
+
+  top = Math.max(
+    margin,
+    Math.min(top, mapHeight - panelHeight - margin)
+  );
+
+  locationDetailPanel.style.left = `${left}px`;
+  locationDetailPanel.style.top = `${top}px`;
+
+}
 function showLocationDetail(location) {
 
   selectedMapLocation = location;
@@ -2027,11 +2079,13 @@ function showLocationDetail(location) {
     });
 
 
-  // 상세 정보창 표시
+   // 상세 정보창 표시
   locationDetailPanel.style.display = 'block';
 
-}
+  // 선택한 장소 옆에 상세창 배치
+  updateLocationDetailPosition();
 
+}
 
 // 장소 상세 정보 닫기
 function closeLocationDetail() {
