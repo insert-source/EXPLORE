@@ -4994,7 +4994,8 @@ function refreshSurvivorDetail() {
     location => location.id === target.current_location_id
   );
 
-  const sameLocation = Boolean(
+   const sameLocation = Boolean(
+    !currentPlayerIsDead &&
     self &&
     self.current_location_id &&
     self.current_location_id === target.current_location_id
@@ -5030,13 +5031,17 @@ function refreshSurvivorDetail() {
   ).disabled = !sameLocation;
 
 
-  document.getElementById(
+   document.getElementById(
     'survivor-detail-message'
-  ).textContent = sameLocation
+  ).textContent = currentPlayerIsDead
 
-    ? '상호작용 대상을 선택했습니다.'
+    ? '사망한 플레이어는 상호작용할 수 없습니다.'
 
-    : '같은 장소에 있어야 상호작용할 수 있습니다.';
+    : sameLocation
+
+      ? '상호작용 대상을 선택했습니다.'
+
+      : '같은 장소에 있어야 상호작용할 수 있습니다.';
 
 
   updateSurvivorDetailPosition();
@@ -5370,14 +5375,19 @@ async function openDeadDetail(targetId) {
     '남겨진 유서가 없습니다.';
 
 
-  lootButton.disabled = !data.can_loot;
+   lootButton.disabled =
+    currentPlayerIsDead || !data.can_loot;
 
 
-  message.textContent = data.can_loot
+  message.textContent = currentPlayerIsDead
 
-    ? '사망자의 소지품을 확인할 수 있습니다.'
+    ? '사망한 플레이어는 소지품을 획득할 수 없습니다.'
 
-    : '같은 장소에 있는 생존자만 소지품을 확인할 수 있습니다.';
+    : data.can_loot
+
+      ? '사망자의 소지품을 확인할 수 있습니다.'
+
+      : '같은 장소에 있는 생존자만 소지품을 확인할 수 있습니다.';
 
 }
   // 사망자 상세창 이벤트
@@ -5446,8 +5456,9 @@ function resetDeadInventory() {
 
 
 // 사망자 소지품 조회
-
 async function loadDeadInventory() {
+
+  if (currentPlayerIsDead) return;
 
   if (!selectedDeadPlayerId) return;
 
@@ -5697,6 +5708,8 @@ function renderDeadInventory(items) {
 // 사망자 소지품 획득
 
 async function lootDeadPlayerItem(item, quantity) {
+
+  if (currentPlayerIsDead) return;
 
   if (deadInventorySaving) return;
 
@@ -6898,6 +6911,8 @@ giftModal.addEventListener('click', event => {
 
 giftSubmit.onclick = async () => {
 
+  if (currentPlayerIsDead) return;
+
   if (giftSaving || !giftTargetId) return;
 
   const item = getSelectedGiftItem();
@@ -7077,6 +7092,8 @@ function getStealTarget(targetId) {
 
 async function openStealModal(targetId) {
 
+  if (currentPlayerIsDead) return;
+
   if (stealSaving) return;
 
   const target = getStealTarget(targetId);
@@ -7195,8 +7212,8 @@ function renderStealInventory() {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'steal-item-button';
-    button.textContent = '훔치기';
-    button.disabled = stealSaving;
+       button.textContent = '훔치기';
+    button.disabled = stealSaving || currentPlayerIsDead;
 
     button.onclick = () => {
 
@@ -7219,6 +7236,8 @@ function renderStealInventory() {
 // 강탈 시도
 
 async function attemptStealItem(item) {
+
+  if (currentPlayerIsDead) return;
 
   if (stealSaving || !stealTargetId) return;
 
@@ -8609,9 +8628,9 @@ await loadMapPlayers();
 
 
   if (user) {
-     await Promise.all([
+  await refreshPlayerStats();
 
-  refreshPlayerStats(),
+await Promise.all([
 
   loadInventory(),
 
@@ -9881,6 +9900,8 @@ let currentPlayerIsDead = false;
 
 function updatePlayerDeathStatus(isDead) {
 
+  const wasDead = currentPlayerIsDead;
+
   currentPlayerIsDead = isDead === true;
 
   const nameRow =
@@ -9890,6 +9911,28 @@ function updatePlayerDeathStatus(isDead) {
     'is-dead',
     currentPlayerIsDead
   );
+
+
+  // 생존 상태에서 사망 상태로 변경된 경우
+
+  if (currentPlayerIsDead && !wasDead) {
+
+    closeGiftModal(true);
+
+    closeStealModal(true);
+closeDeadDetail();
+  }
+
+
+  // 사망 또는 부활 시 화면 갱신
+
+  if (wasDead !== currentPlayerIsDead) {
+
+    refreshSurvivorDetail();
+
+    lastInventorySnapshot = null;
+
+  }
 
 }
 async function refreshPlayerStats() {
@@ -10037,19 +10080,29 @@ function renderInventory(items) {
     if (info.usable) {
       const useBtn = document.createElement('button');
 
-      useBtn.type = 'button';
+           useBtn.type = 'button';
       useBtn.textContent = '사용';
       useBtn.style.alignSelf = 'flex-end';
       useBtn.style.fontSize = '11px';
 
+      useBtn.disabled = currentPlayerIsDead;
+
+      useBtn.title = currentPlayerIsDead
+        ? '사망한 플레이어는 아이템을 사용할 수 없습니다.'
+        : '';
+
       useBtn.onclick = async () => {
+
+        if (currentPlayerIsDead) return;
+
         useBtn.disabled = true;
 
         try {
           await usePlayerItem(entry.item_id, info.name);
         } finally {
-          useBtn.disabled = false;
+          useBtn.disabled = currentPlayerIsDead;
         }
+
       };
 
       item.appendChild(useBtn);
@@ -10129,6 +10182,7 @@ async function loadInventory() {
 
   const snapshot = JSON.stringify({
     userId: user.id,
+    isDead: currentPlayerIsDead,
     items: items
   });
 
@@ -10145,10 +10199,18 @@ async function loadInventory() {
 }
 // 아이템 사용
 async function usePlayerItem(itemId, itemName) {
+
+  if (currentPlayerIsDead) {
+
+    alert('사망한 플레이어는 아이템을 사용할 수 없습니다.');
+
+    return;
+
+  }
+
   const confirmed = confirm(
     `${itemName} 아이템을 사용하시겠습니까?`
   );
-
   if (!confirmed) return;
 
   try {
