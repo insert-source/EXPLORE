@@ -3950,7 +3950,65 @@ label[for="admin-location-travel"] {
         등록된 아이템 목록
       </div>
     </section>
+<!-- 아이템 일괄 등록 -->
 
+<button type="button" id="admin-item-bulk-open">
+  일괄 등록
+</button>
+
+<div id="admin-item-bulk-panel"
+     style="display:none; margin:12px 0;">
+
+  <div class="widget-title">
+    BULK ITEM REGISTRATION
+  </div>
+
+  <div style="font-size:11px; color:#998c92; margin:10px 0;">
+    이름 / 설명 / 체력 / 정신력 / 허기 / 사용 가능 / 소모성
+    <br>
+    엑셀에서 복사한 내용을 아래에 붙여넣으세요.
+  </div>
+
+  <textarea
+    id="admin-item-bulk-input"
+    placeholder="엑셀 데이터 붙여넣기"
+    style="
+      width:100%;
+      height:180px;
+      box-sizing:border-box;
+      background:#171416;
+      color:#e8e1e4;
+      border:1px solid #49303a;
+      padding:10px;
+      resize:vertical;
+    "
+  ></textarea>
+
+  <div style="display:flex; gap:8px; margin-top:10px;">
+
+    <button type="button" id="admin-item-bulk-preview">
+      미리보기
+    </button>
+
+    <button type="button" id="admin-item-bulk-save" disabled>
+      일괄 저장
+    </button>
+
+    <button type="button" id="admin-item-bulk-close">
+      취소
+    </button>
+
+  </div>
+
+  <div id="admin-item-bulk-message"
+       style="margin-top:10px; font-size:12px;">
+  </div>
+
+  <div id="admin-item-bulk-result"
+       style="max-height:250px; overflow:auto; margin-top:10px;">
+  </div>
+
+</div>
     <!-- 아이템 등록 및 수정 -->
     <section class="widget" style="margin-top:12px;">
       <div class="widget-title">ITEM EDITOR</div>
@@ -15027,6 +15085,294 @@ document.getElementById(
   document.getElementById(
     'player-list-modal'
   ).style.display = 'none';
+
+});
+  document.getElementById(
+  'admin-item-bulk-preview'
+).addEventListener('click', async () => {
+
+  const input = document.getElementById('admin-item-bulk-input');
+  const result = document.getElementById('admin-item-bulk-result');
+  const message = document.getElementById('admin-item-bulk-message');
+  const save = document.getElementById('admin-item-bulk-save');
+
+  const originalText = input.value;
+
+  bulkItemRows = [];
+  save.disabled = true;
+  result.replaceChildren();
+
+  message.textContent = '검사 중...';
+
+  const { rows, errors } = parseBulkItemRows(originalText);
+
+  const { data, error } = await supabaseClient
+    .from('items')
+    .select('name')
+    .in('name', rows.map(row => row.name));
+
+  if (input.value !== originalText) return;
+
+  if (error) {
+    message.textContent = error.message;
+    return;
+  }
+
+  const names = new Set(data.map(item => item.name));
+
+  let duplicates = 0;
+
+  rows.forEach(row => {
+
+    const box = document.createElement('div');
+
+    box.style.cssText = `
+      padding:10px;
+      margin-bottom:5px;
+      border:1px solid #49303a;
+      font-size:12px;
+      white-space:pre-wrap;
+      line-height:1.7;
+    `;
+
+    if (names.has(row.name)) {
+
+      duplicates++;
+
+      box.style.color = '#998c92';
+      box.textContent = `${row.name} — 중복으로 제외`;
+
+    } else {
+
+      names.add(row.name);
+      bulkItemRows.push(row);
+
+      box.style.color = '#9dc5ae';
+
+      box.textContent =
+        `${row.name} — 등록 가능\n` +
+        `${row.description}\n` +
+        `체력 ${row.health_effect} / 정신력 ${row.mental_effect} / 허기 ${row.hunger_effect}\n` +
+        `사용 가능: ${row.usable ? 'O' : 'X'} / 소모성: ${row.consumable ? 'O' : 'X'}`;
+
+    }
+
+    result.appendChild(box);
+
+  });
+
+  errors.forEach(text => {
+
+    const box = document.createElement('div');
+
+    box.style.color = '#e57373';
+    box.textContent = text;
+
+    result.appendChild(box);
+
+  });
+
+  message.textContent =
+    `등록 가능 ${bulkItemRows.length}개 / ` +
+    `중복 ${duplicates}개 / 오류 ${errors.length}개`;
+
+  save.disabled = bulkItemRows.length === 0;
+
+});
+  let bulkItemRows = [];
+function parseBulkItemRows(text) {
+
+  const rows = [];
+  const errors = [];
+
+  function parseNumber(value) {
+    const number = Number(value?.trim() || '0');
+
+    if (
+      !Number.isInteger(number) ||
+      number < -2147483648 ||
+      number > 2147483647
+    ) {
+      throw new Error('능력치는 정수로 입력해야 합니다.');
+    }
+
+    return number;
+  }
+
+  function parseBoolean(value) {
+
+    const v = (value || '').trim().toLowerCase();
+
+    if (['o', 'true', '1', '○'].includes(v)) {
+      return true;
+    }
+
+    if (['x', 'false', '0', '×', ''].includes(v)) {
+      return false;
+    }
+
+    throw new Error('사용 가능·소모성은 O/X로 입력해 주세요.');
+
+  }
+
+  text.split(/\r?\n/).forEach((line, index) => {
+
+    if (!line.trim()) return;
+
+    const cols = line.split('\t');
+
+    if (
+      index === 0 &&
+      cols[0].trim() === '이름' &&
+      cols[1]?.trim() === '설명'
+    ) return;
+
+    try {
+
+      const name = cols[0]?.trim();
+
+      if (!name) {
+        throw new Error('아이템 이름이 없습니다.');
+      }
+
+      if (cols.length > 7) {
+        throw new Error('입력 항목이 너무 많습니다.');
+      }
+
+      rows.push({
+        name: name,
+        description: cols[1]?.trim() || '',
+        health_effect: parseNumber(cols[2]),
+        mental_effect: parseNumber(cols[3]),
+        hunger_effect: parseNumber(cols[4]),
+        usable: parseBoolean(cols[5]),
+        consumable: parseBoolean(cols[6])
+      });
+
+    } catch (error) {
+
+      errors.push(`${index + 1}행: ${error.message}`);
+
+    }
+
+  });
+
+  return { rows, errors };
+
+}
+  document.getElementById(
+  'admin-item-bulk-save'
+).addEventListener('click', async () => {
+
+  const save = document.getElementById('admin-item-bulk-save');
+  const message = document.getElementById('admin-item-bulk-message');
+  const input = document.getElementById('admin-item-bulk-input');
+
+  if (!bulkItemRows.length || save.disabled) return;
+
+  const rows = [...bulkItemRows];
+  const count = rows.length;
+
+  if (!confirm(`${count}개의 아이템을 등록하시겠습니까?`)) {
+    return;
+  }
+
+  save.disabled = true;
+  input.disabled = true;
+
+  message.textContent = '저장 중...';
+
+  try {
+
+    const { error } = await supabaseClient
+      .from('items')
+      .insert(rows);
+
+    if (error) throw error;
+
+    resetBulkItemPanel();
+
+    message.style.color = '#9dc5ae';
+    message.textContent = `${count}개의 아이템이 등록되었습니다.`;
+await loadAdminItems();
+  } catch (error) {
+
+    message.style.color = '#e57373';
+    message.textContent = `등록 실패: ${error.message}`;
+
+    save.disabled = bulkItemRows.length === 0;
+
+  } finally {
+
+    input.disabled = false;
+
+  }
+
+});
+function resetBulkItemPanel() {
+
+  bulkItemRows = [];
+
+  document.getElementById(
+    'admin-item-bulk-input'
+  ).value = '';
+
+  document.getElementById(
+    'admin-item-bulk-result'
+  ).replaceChildren();
+
+  document.getElementById(
+    'admin-item-bulk-message'
+  ).textContent = '';
+
+  document.getElementById(
+    'admin-item-bulk-save'
+  ).disabled = true;
+
+}
+
+document.getElementById(
+  'admin-item-bulk-open'
+).addEventListener('click', () => {
+
+  const panel = document.getElementById(
+    'admin-item-bulk-panel'
+  );
+
+  panel.style.display =
+    panel.style.display === 'none' ? 'block' : 'none';
+
+});
+
+document.getElementById(
+  'admin-item-bulk-close'
+).addEventListener('click', () => {
+
+  resetBulkItemPanel();
+
+  document.getElementById(
+    'admin-item-bulk-panel'
+  ).style.display = 'none';
+
+});
+
+document.getElementById(
+  'admin-item-bulk-input'
+).addEventListener('input', () => {
+
+  bulkItemRows = [];
+
+  document.getElementById(
+    'admin-item-bulk-save'
+  ).disabled = true;
+
+  document.getElementById(
+    'admin-item-bulk-result'
+  ).replaceChildren();
+
+  document.getElementById(
+    'admin-item-bulk-message'
+  ).textContent = '미리보기를 실행해 주세요.';
 
 });
 async function checkPlayerAccess() {
