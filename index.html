@@ -1200,7 +1200,20 @@ async function loadAdminUsers() {
       reject.onclick = () => changePlayerStatus(
         player.user_id, 'rejected'
       );
+const deleteBtn = document.createElement('button');
 
+deleteBtn.textContent = '삭제';
+deleteBtn.style.background = '#6e263d';
+deleteBtn.style.color = '#ffffff';
+deleteBtn.style.border = '1px solid #9b304d';
+deleteBtn.style.marginLeft = '5px';
+
+deleteBtn.onclick = () => {
+  deletePlayer(
+    player.user_id,
+    player.player_name || '이름 미등록'
+  );
+};
       buttons.append(approve, reject);
       row.appendChild(buttons);
     }
@@ -1210,6 +1223,35 @@ async function loadAdminUsers() {
 }
 
 // 승인 또는 거절 처리
+  // 플레이어 영구 삭제
+async function deletePlayer(userId, playerName) {
+  const confirmed = confirm(
+    `${playerName} 캐릭터를 영구 삭제하시겠습니까?\n\n` +
+    `계정, 능력치, 보유 아이템, 유서가 모두 삭제됩니다.\n` +
+    `삭제 후에는 복구할 수 없습니다.`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    const { data, error } =
+      await supabaseClient.functions.invoke('delete-player', {
+        body: { userId: userId }
+      });
+
+    if (error) throw error;
+    if (!data?.success) {
+      throw new Error(data?.error || '삭제에 실패했습니다.');
+    }
+
+    alert('캐릭터가 삭제되었습니다.');
+
+    await loadAdminUsers();
+
+  } catch (error) {
+    alert('삭제 실패: ' + error.message);
+  }
+}
 async function changePlayerStatus(userId, status) {
   const action = status === 'approved' ? '승인' : '거절';
 
