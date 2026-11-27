@@ -571,6 +571,146 @@ input {
   text-align: center;
   pointer-events: none;
 }
+  /* 지도 장소 상세 정보창 */
+
+#location-detail-panel {
+  display: none;
+  position: absolute;
+  right: 15px;
+  bottom: 40px;
+  width: 280px;
+  max-width: calc(100% - 30px);
+  max-height: 75%;
+  overflow-y: auto;
+  box-sizing: border-box;
+  z-index: 8;
+  padding: 15px;
+  background: rgba(33, 26, 30, 0.97);
+  border: 1px solid #653448;
+  border-radius: 6px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  cursor: default;
+}
+
+.location-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #49303a;
+  margin-bottom: 12px;
+}
+
+.location-detail-title {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #998c92;
+}
+
+#location-detail-close {
+  background: transparent;
+  border: none;
+  color: #998c92;
+  font-size: 20px;
+  padding: 0 5px;
+  cursor: pointer;
+}
+
+#location-detail-close:hover {
+  color: #ffffff;
+}
+
+#location-detail-name {
+  font-size: 19px;
+  font-weight: bold;
+  color: #d8cbd0;
+  overflow-wrap: anywhere;
+  margin-bottom: 5px;
+}
+
+#location-detail-coordinates {
+  font-size: 11px;
+  color: #998c92;
+}
+
+#location-detail-description {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #c5b8be;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 15px 0;
+}
+
+.location-detail-info {
+  border-top: 1px solid #49303a;
+  border-bottom: 1px solid #49303a;
+  padding: 8px 0;
+}
+
+.location-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 12px;
+  color: #998c92;
+}
+
+.location-detail-value {
+  color: #d8cbd0;
+}
+
+.location-detail-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 15px;
+}
+
+.location-detail-actions button {
+  flex: 1;
+  padding: 10px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#location-move-btn {
+  background: #36594b;
+  color: #b5dfc5;
+  border: 1px solid #789184;
+}
+
+#location-explore-btn {
+  background: #4b2937;
+  color: #d88ca3;
+  border: 1px solid #9b304d;
+}
+
+.location-detail-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+#location-detail-message {
+  margin-top: 10px;
+  font-size: 11px;
+  color: #998c92;
+  line-height: 1.5;
+}
+
+/* 선택된 장소 강조 */
+
+.map-location.selected .map-location-icon {
+  color: #ffffff;
+  text-shadow: 0 0 12px #d88ca3;
+}
+
+.map-location.selected .map-location-name {
+  border-color: #d88ca3;
+  color: #ffffff;
+}
 </style>
 </head>
 
@@ -1562,6 +1702,98 @@ input {
   <main class="main-area">
 
     <section class="map-panel" id="map">
+      <!-- 장소 상세 정보창 시작 -->
+
+<div id="location-detail-panel">
+
+  <div class="location-detail-header">
+
+    <span class="location-detail-title">
+      LOCATION
+    </span>
+
+    <button id="location-detail-close" type="button">
+      ×
+    </button>
+
+  </div>
+
+
+  <div id="location-detail-name">
+    장소 이름
+  </div>
+
+  <div id="location-detail-coordinates">
+    X : 0 / Y : 0
+  </div>
+
+  <div id="location-detail-description">
+    장소 설명
+  </div>
+
+
+  <div class="location-detail-info">
+
+    <div class="location-detail-row">
+
+      <span>위험도</span>
+
+      <span class="location-detail-value"
+            id="location-detail-danger">
+        -
+      </span>
+
+    </div>
+
+    <div class="location-detail-row">
+
+      <span>이동 시간</span>
+
+      <span class="location-detail-value"
+            id="location-detail-travel">
+        -
+      </span>
+
+    </div>
+
+    <div class="location-detail-row">
+
+      <span>조사 시간</span>
+
+      <span class="location-detail-value"
+            id="location-detail-explore">
+        -
+      </span>
+
+    </div>
+
+  </div>
+
+
+  <div class="location-detail-actions">
+
+    <button id="location-move-btn"
+            type="button"
+            disabled>
+      이동하기
+    </button>
+
+    <button id="location-explore-btn"
+            type="button"
+            disabled>
+      조사하기
+    </button>
+
+  </div>
+
+
+  <div id="location-detail-message">
+    이동 및 조사 기능 준비 중
+  </div>
+
+</div>
+
+<!-- 장소 상세 정보창 끝 -->
       <div id="grid"></div>
 
       <div class="map-label">
@@ -1674,6 +1906,8 @@ async function loadMapLocations() {
 
   const requestId = ++mapLocationRequest;
 
+  closeLocationDetail();
+
   mapLocations = [];
   mapLocationLayer.innerHTML = "";
 
@@ -1705,7 +1939,151 @@ async function loadMapLocations() {
 
 }
 
+// ========================================
+// 장소 상세 정보창
+// ========================================
 
+let selectedMapLocation = null;
+
+const locationDetailPanel =
+  document.getElementById('location-detail-panel');
+
+
+// 장소 상세 정보 열기
+function showLocationDetail(location) {
+
+  selectedMapLocation = location;
+
+  const dangerNames = [
+    '안전',
+    '낮음',
+    '보통',
+    '높음'
+  ];
+
+  const dangerColors = [
+    '#998c92',
+    '#789184',
+    '#c3a36d',
+    '#d88ca3'
+  ];
+
+
+  // 장소 이름
+  document.getElementById(
+    'location-detail-name'
+  ).textContent = location.name;
+
+
+  // 좌표
+  document.getElementById(
+    'location-detail-coordinates'
+  ).textContent =
+    `X : ${location.x} / Y : ${location.y}`;
+
+
+  // 장소 설명
+  document.getElementById(
+    'location-detail-description'
+  ).textContent =
+    location.description || '등록된 설명이 없습니다.';
+
+
+  // 위험도
+  const dangerDisplay = document.getElementById(
+    'location-detail-danger'
+  );
+
+  dangerDisplay.textContent =
+    dangerNames[location.danger_level];
+
+  dangerDisplay.style.color =
+    dangerColors[location.danger_level];
+
+
+  // 이동 시간
+  document.getElementById(
+    'location-detail-travel'
+  ).textContent =
+    `${location.travel_minutes}분`;
+
+
+  // 조사 시간
+  document.getElementById(
+    'location-detail-explore'
+  ).textContent =
+    `${location.explore_minutes}분`;
+
+
+  // 선택된 장소 강조
+  document.querySelectorAll('.map-location')
+    .forEach(marker => {
+
+      marker.classList.toggle(
+        'selected',
+        marker.dataset.id === location.id
+      );
+
+    });
+
+
+  // 상세 정보창 표시
+  locationDetailPanel.style.display = 'block';
+
+}
+
+
+// 장소 상세 정보 닫기
+function closeLocationDetail() {
+
+  selectedMapLocation = null;
+
+  locationDetailPanel.style.display = 'none';
+
+  document.querySelectorAll('.map-location')
+    .forEach(marker => {
+
+      marker.classList.remove('selected');
+
+    });
+
+}
+
+
+// 닫기 버튼
+document.getElementById(
+  'location-detail-close'
+).onclick = closeLocationDetail;
+
+
+// 상세 정보창 내부에서 지도 드래그 방지
+locationDetailPanel.addEventListener(
+  'pointerdown', e => {
+
+    e.stopPropagation();
+
+  }
+);
+
+
+// 상세 정보창 내부 클릭 전달 방지
+locationDetailPanel.addEventListener(
+  'click', e => {
+
+    e.stopPropagation();
+
+  }
+);
+
+
+// 상세 정보창 내부 스크롤 시 지도 확대 방지
+locationDetailPanel.addEventListener(
+  'wheel', e => {
+
+    e.stopPropagation();
+
+  }
+);
 // 장소 아이콘 생성
 function renderMapLocations() {
 
@@ -1753,28 +2131,14 @@ function renderMapLocations() {
     });
 
 
-    // 임시 장소 상세 정보
-    marker.addEventListener("click", e => {
+    // 장소 상세 정보 표시
+marker.addEventListener("click", e => {
 
-      e.stopPropagation();
+  e.stopPropagation();
 
-      const dangerNames = [
-        "안전",
-        "낮음",
-        "보통",
-        "높음"
-      ];
+  showLocationDetail(location);
 
-      alert(
-        `${location.name}\n\n` +
-        `${location.description || "등록된 설명이 없습니다."}\n\n` +
-        `좌표: X ${location.x} / Y ${location.y}\n` +
-        `이동 시간: ${location.travel_minutes}분\n` +
-        `조사 시간: ${location.explore_minutes}분\n` +
-        `위험도: ${dangerNames[location.danger_level]}`
-      );
-
-    });
+});
 
 
     marker.append(icon, name);
@@ -4059,6 +4423,7 @@ statAdminPanel.style.display = 'none';
 locationAdminOpen.style.display = 'none';
 locationAdminPanel.style.display = 'none';
 cancelLocationPicking(false);
+  closeLocationDetail();
   if (!user) {
     document.getElementById('user-status').textContent = 'GUEST';
     loginOpen.style.display = 'inline-block';
