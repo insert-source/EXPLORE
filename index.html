@@ -7039,6 +7039,8 @@ function updateGiftPreview() {
 
 async function openGiftModal(targetId) {
 
+  if (currentPlayerIsDead) return;
+
   if (giftSaving) return;
 
   const target = mapPlayers.find(
@@ -9346,14 +9348,11 @@ function updateLocationActionButtons() {
 
   }
     // 정신력 부족 시 조사 제한
-
-  if (currentPlayerMental <= 0) {
-
-    message.textContent =
-      '정신력이 부족하여 조사할 수 없습니다.';
-
-    return;
-
+if (!location.is_base && currentPlayerMental <= 0) {
+  message.textContent =
+    '정신력이 부족하여 조사할 수 없습니다.';
+  return;
+}
   }
   if (location.is_base) {
 
@@ -10448,7 +10447,7 @@ function getStatColor(value) {
 let currentPlayerIsDead = false;
 let currentPlayerMental = 0;
 
-
+let willSaving = false;
 // 플레이어 사망 상태 표시
 
 function updatePlayerDeathStatus(isDead) {
@@ -10470,9 +10469,9 @@ function updatePlayerDeathStatus(isDead) {
     'player-will-display'
   ).readOnly = currentPlayerIsDead;
 
-  document.getElementById(
-    'save-will-btn'
-  ).disabled = currentPlayerIsDead;
+ document.getElementById(
+  'save-will-btn'
+).disabled = currentPlayerIsDead || willSaving;
 
   // 생존 상태에서 사망 상태로 변경된 경우
 
@@ -10537,7 +10536,9 @@ if (!user) return;
   updatePlayerStat('health', data.health);
   updatePlayerStat('mental', data.mental);
   updatePlayerStat('hunger', data.hunger);
-
+updatePlayerDeathStatus(data.is_dead);
+updateLocationActionButtons();
+updateMovementProgress();
    updatePlayerDeathStatus(data.is_dead);
 
   updateLocationActionButtons();
@@ -10811,7 +10812,7 @@ async function usePlayerItem(itemId, itemName) {
     const { data: profile, error: profileError } =
       await supabaseClient
         .from('profiles')
-        .select('health, mental, hunger')
+        .select('health, mental, hunger, is_dead')
         .eq('user_id', user.id)
         .single();
 
@@ -11009,12 +11010,11 @@ function renderPlayerProfile(profile) {
 
 document.getElementById('save-will-btn').addEventListener('click', async () => {
 
+  if (willSaving) return;
+
   const willText = document.getElementById('player-will-display').value;
   const message = document.getElementById('will-message');
   const button = document.getElementById('save-will-btn');
-
-
-  // 사망자 유서 저장 제한
 
   if (currentPlayerIsDead) {
 
@@ -11025,25 +11025,30 @@ document.getElementById('save-will-btn').addEventListener('click', async () => {
 
   }
 
-
+  willSaving = true;
   button.disabled = true;
   message.textContent = '저장 중...';
 
-  const { error } = await supabaseClient.rpc('save_my_will', {
-    p_will: willText
-  });
+  try {
 
-  if (error) {
+    const { error } = await supabaseClient.rpc('save_my_will', {
+      p_will: willText
+    });
 
-    message.textContent = '저장 실패: ' + error.message;
-
-  } else {
+    if (error) throw error;
 
     message.textContent = '유서가 저장되었습니다.';
 
-  }
+  } catch (error) {
 
-  button.disabled = currentPlayerIsDead;
+    message.textContent = '저장 실패: ' + error.message;
+
+  } finally {
+
+    willSaving = false;
+    button.disabled = currentPlayerIsDead;
+
+  }
 
 });
 // 승인 상태 확인
@@ -14112,7 +14117,8 @@ async function checkPlayerAccess() {
 
   resetDeathAlert();
 
-  updatePlayerDeathStatus(false);
+ currentPlayerMental = 0;
+updatePlayerDeathStatus(false);
 
   inventoryRequest++;
   activityLogRequest++;
@@ -14240,7 +14246,11 @@ radioSendOpen.style.display = 'inline-block';
 
   adminPanel.style.display = 'none';
 
-if (profile.status === 'approved' && profile.approved) {
+if (
+  profile.status === 'approved' &&
+  profile.approved === true &&
+  profile.signup_completed === true
+) {
   dashboard.style.display = 'grid';
   pendingScreen.style.display = 'none';
 
@@ -14252,7 +14262,14 @@ if (profile.status === 'approved' && profile.approved) {
     const title = pendingScreen.querySelector('h2');
     const message = pendingScreen.querySelector('p');
 
-    if (profile.status === 'rejected') {
+  if (!profile.signup_completed && profile.status !== 'rejected') {
+
+  title.textContent = 'SETUP INCOMPLETE';
+
+  message.textContent =
+    '초기 캐릭터 등록이 완료되지 않았습니다. 관리자에게 문의해 주세요.';
+
+} else if (profile.status === 'rejected') {
       title.textContent = 'ACCESS REJECTED';
       message.textContent = '가입 신청이 거절되었습니다.';
     } else {
