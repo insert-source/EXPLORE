@@ -2880,6 +2880,31 @@ label[for="admin-location-travel"] {
 #death-alert-message:empty {
   display: none;
 } 
+  /* =========================
+   플레이어 사망 상태 표시
+   ========================= */
+
+#player-dead-badge {
+  display: none;
+  flex-shrink: 0;
+  padding: 3px 7px;
+  background: #351b26;
+  border: 1px solid #9b304d;
+  border-radius: 3px;
+  color: #d88ca3;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 1.5px;
+  line-height: 1.4;
+}
+
+#player-name-row.is-dead #player-dead-badge {
+  display: inline-block;
+}
+
+#player-name-row.is-dead #display-player-name {
+  color: #d88ca3;
+}
 </style>
 </head>
 
@@ -4359,11 +4384,15 @@ label[for="admin-location-travel"] {
     <section class="widget">
       <div class="widget-title">PLAYER STATUS</div>
 
-   <div class="player-name-row" id="player-name-row">
+  <div class="player-name-row" id="player-name-row">
 
   <div class="player-name" id="display-player-name">
     미등록 플레이어
   </div>
+
+  <span id="player-dead-badge">
+    DEAD
+  </span>
 
   <button
     type="button"
@@ -8593,18 +8622,40 @@ await loadMapPlayers();
 ]);
 
 
-   // 미확인 조사 결과 확인
+ // 미확인 조사 결과 확인
 
-if (!currentStealAlert) {
+if (
+  !currentStealAlert &&
+  !currentDeathAlert
+) {
 
   await loadUnreadExploreResult();
 
 }
 
 
+// 미확인 사망 알림 확인
+
+if (
+  !currentExploreResult &&
+  !currentStealAlert
+) {
+
+  await loadUnreadDeathAlert();
+
+}
+
+
 // 미확인 강탈 발각 알림 확인
 
-await loadUnreadStealAlert();
+if (
+  !currentExploreResult &&
+  !currentDeathAlert
+) {
+
+  await loadUnreadStealAlert();
+
+}
 
       }
 
@@ -8705,7 +8756,11 @@ map.appendChild(movementProgressPanel);
 
 function updateMovementProgress() {
 
-  if (!playerMovement || playerMovement.status !== 	'exploring') {
+  if (
+    currentPlayerIsDead ||
+    !playerMovement ||
+    playerMovement.status !== 'exploring'
+  ) {
 
     movementProgressPanel.style.display = 'none';
 
@@ -8779,6 +8834,8 @@ setInterval(updateMovementProgress, 250);
 
 async function startPlayerExplore(location) {
 
+  if (currentPlayerIsDead) return;
+
   if (!location || movementActionPending) return;
 
   if (!confirm(
@@ -8830,6 +8887,8 @@ async function startPlayerExplore(location) {
 // 조사 중단
 
 async function cancelPlayerExplore() {
+
+  if (currentPlayerIsDead) return;
 
   if (movementActionPending) return;
 
@@ -8895,7 +8954,27 @@ function updateLocationActionButtons() {
   );
 
   if (!location) return;
+  exploreBtn.disabled = true;
 
+  if (!selectedMapLocation) return;
+
+  const location = mapLocations.find(
+    l => l.id === selectedMapLocation.id
+  );
+
+  if (!location) return;
+
+
+  // 사망자 조사 제한
+
+  if (currentPlayerIsDead) {
+
+    message.textContent =
+      '사망한 플레이어는 조사할 수 없습니다.';
+
+    return;
+
+  }
   if (location.is_base) {
 
     message.textContent = '현재 생존자들의 거점입니다.';
@@ -9793,7 +9872,26 @@ function getStatColor(value) {
 
 // 능력치 수치 및 색상 업데이트
   // 플레이어 능력치 자동 갱신
+// 플레이어 사망 상태 관리
 
+let currentPlayerIsDead = false;
+
+
+// 플레이어 사망 상태 표시
+
+function updatePlayerDeathStatus(isDead) {
+
+  currentPlayerIsDead = isDead === true;
+
+  const nameRow =
+    document.getElementById('player-name-row');
+
+  nameRow.classList.toggle(
+    'is-dead',
+    currentPlayerIsDead
+  );
+
+}
 async function refreshPlayerStats() {
 
   const { data: sessionData } =
@@ -9806,7 +9904,7 @@ if (!user) return;
 
   const { data, error } = await supabaseClient
     .from('profiles')
-    .select('health, mental, hunger')
+   .select('health, mental, hunger, is_dead')
     .eq('user_id', user.id)
     .eq('approved', true)
     .eq('status', 'approved')
@@ -9833,10 +9931,14 @@ if (!user) return;
 
 
   updatePlayerStat('health', data.health);
-
   updatePlayerStat('mental', data.mental);
-
   updatePlayerStat('hunger', data.hunger);
+
+   updatePlayerDeathStatus(data.is_dead);
+
+  updateLocationActionButtons();
+
+  updateMovementProgress();
 
 }
 function updatePlayerStat(type, value) {
@@ -10248,8 +10350,11 @@ function renderPlayerProfile(profile) {
   // 정신력
   updatePlayerStat('mental', profile.mental);
 
-  // 허기
+   // 허기
   updatePlayerStat('hunger', profile.hunger);
+
+  // 사망 상태 표시
+  updatePlayerDeathStatus(profile.is_dead);
 
   // 유서 표시
   document.getElementById('player-will-display').value =
@@ -13346,9 +13451,13 @@ async function checkPlayerAccess() {
 
   closeStealModal(true);
 
-  resetStealAlert();
+    resetStealAlert();
 
   resetExploreResult();
+
+  resetDeathAlert();
+
+  updatePlayerDeathStatus(false);
 
   inventoryRequest++;
   activityLogRequest++;
@@ -13421,7 +13530,7 @@ authModal.style.display = 'none';
 
   const { data: profile, error } = await supabaseClient
     .from('profiles')
-.select('approved, status, player_name, health, mental, hunger, item1, item2, will, signup_completed')
+.select('approved, status, player_name, health, mental, hunger, item1, item2, will, signup_completed, is_dead')
     .eq('user_id', user.id)
     .maybeSingle();
 
