@@ -412,43 +412,49 @@ input {
     <section class="widget">
       <div class="widget-title">PLAYER STATUS</div>
 
-      <div class="player-name">미등록 플레이어</div>
+     <div class="player-name" id="display-player-name">미등록 플레이어</div>
 
       <div class="stat">
         <div class="stat-header">
-          <span>체력</span>
-          <span>100 / 100</span>
-        </div>
-        <div class="stat-bar">
-          <div class="stat-fill" style="width:100%"></div>
-        </div>
+     <div class="stat-header">
+  <span>체력</span>
+  <span id="display-health">0 / 100</span>
+</div>
+<div class="stat-bar">
+  <div class="stat-fill" id="health-fill" style="width:0%"></div>
+</div>
       </div>
 
       <div class="stat">
-        <div class="stat-header">
-          <span>정신력</span>
-          <span>100 / 100</span>
-        </div>
-        <div class="stat-bar">
-          <div class="stat-fill" style="width:100%"></div>
-        </div>
+       <div class="stat-header">
+  <span>정신력</span>
+  <span id="display-mental">0 / 100</span>
+</div>
+<div class="stat-bar">
+  <div class="stat-fill" id="mental-fill" style="width:0%"></div>
+</div>
       </div>
 
       <div class="stat" style="margin-bottom:0">
         <div class="stat-header">
-          <span>허기</span>
-          <span>100 / 100</span>
-        </div>
-        <div class="stat-bar">
-          <div class="stat-fill" style="width:100%"></div>
-        </div>
+  <span>허기</span>
+  <span id="display-hunger">0 / 100</span>
+</div>
+<div class="stat-bar">
+  <div class="stat-fill" id="hunger-fill" style="width:0%"></div>
+</div>
       </div>
     </section>
 
     <section class="widget">
       <div class="widget-title">INVENTORY</div>
 
-      <div class="item-list">
+  <div class="item-list" id="inventory-list">
+  <div class="item">
+    <span>보유 아이템 없음</span>
+    <span class="item-count">-</span>
+  </div>
+</div>
         <div class="item">
           <span>보유 아이템 없음</span>
           <span class="item-count">-</span>
@@ -712,7 +718,61 @@ authSubmit.onclick = async () => {
     authSubmit.disabled = false;
   }
 };
+// 플레이어 정보 화면에 표시
+function renderPlayerProfile(profile) {
 
+  // 플레이어 이름
+  document.getElementById('display-player-name').textContent =
+    profile.player_name;
+
+  // 체력
+  document.getElementById('display-health').textContent =
+    `${profile.health} / 100`;
+  document.getElementById('health-fill').style.width =
+    `${profile.health}%`;
+
+  // 정신력
+  document.getElementById('display-mental').textContent =
+    `${profile.mental} / 100`;
+  document.getElementById('mental-fill').style.width =
+    `${profile.mental}%`;
+
+  // 허기
+  document.getElementById('display-hunger').textContent =
+    `${profile.hunger} / 100`;
+  document.getElementById('hunger-fill').style.width =
+    `${profile.hunger}%`;
+
+  // 아이템 목록
+  const inventory = document.getElementById('inventory-list');
+  inventory.innerHTML = '';
+
+  const items = [profile.item1, profile.item2]
+    .filter(item => item && item.trim() !== '');
+
+  if (items.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'item';
+    empty.textContent = '보유 아이템 없음';
+    inventory.appendChild(empty);
+    return;
+  }
+
+  items.forEach(itemName => {
+    const item = document.createElement('div');
+    item.className = 'item';
+
+    const name = document.createElement('span');
+    name.textContent = itemName;
+
+    const count = document.createElement('span');
+    count.className = 'item-count';
+    count.textContent = '1개';
+
+    item.append(name, count);
+    inventory.appendChild(item);
+  });
+}
 // 승인 상태 확인
 async function checkPlayerAccess() {
   const { data: sessionData } =
@@ -745,7 +805,7 @@ async function checkPlayerAccess() {
 
   const { data: profile, error } = await supabaseClient
     .from('profiles')
-    .select('approved, status')
+  .select('approved, status, player_name, health, mental, hunger, item1, item2')
     .eq('user_id', user.id)
     .maybeSingle();
 
@@ -764,6 +824,7 @@ async function checkPlayerAccess() {
     dashboard.style.display = 'grid';
     pendingScreen.style.display = 'none';
     adminPanel.style.display = 'block';
+renderPlayerProfile(profile);
 
     loadAdminUsers();
     return;
@@ -771,10 +832,12 @@ async function checkPlayerAccess() {
 
   adminPanel.style.display = 'none';
 
-  if (profile.status === 'approved' && profile.approved) {
-    dashboard.style.display = 'grid';
-    pendingScreen.style.display = 'none';
-  } else {
+if (profile.status === 'approved' && profile.approved) {
+  dashboard.style.display = 'grid';
+  pendingScreen.style.display = 'none';
+
+  renderPlayerProfile(profile);
+}else {
     dashboard.style.display = 'none';
     pendingScreen.style.display = 'flex';
 
