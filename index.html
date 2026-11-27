@@ -1403,7 +1403,7 @@ async function loadActivityLogs() {
     return;
   }
 
-  renderActivityLogs((data || []).reverse());
+renderActivityLogs(data || []);
 }
 
 
@@ -1469,8 +1469,8 @@ function renderActivityLogs(logs) {
     list.appendChild(entry);
   });
 
-  // 최신 기록으로 자동 스크롤
-  list.scrollTop = list.scrollHeight;
+// 최신 기록이 있는 최상단으로 자동 스크롤
+list.scrollTop = 0;
 }
 function renderPlayerProfile(profile) {
 
