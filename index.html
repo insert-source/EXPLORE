@@ -1956,6 +1956,201 @@ label[for="admin-location-travel"] {
 #gift-message:empty {
   display: none;
 }
+  /* =========================
+   아이템 강탈 시스템
+========================= */
+
+#steal-modal,
+#steal-alert-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+#steal-modal {
+  z-index: 15000;
+}
+
+#steal-alert-modal {
+  z-index: 21000;
+}
+
+.steal-box {
+  width: 380px;
+  max-width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 24px;
+  background: #21191b;
+  border: 1px solid #655052;
+  border-radius: 8px;
+  color: #ddd8d4;
+  box-shadow: 0 15px 50px rgba(0,0,0,0.5);
+}
+
+.steal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #bd8585;
+  font-size: 12px;
+  letter-spacing: 2px;
+  margin-bottom: 22px;
+}
+
+#steal-close {
+  background: transparent;
+  border: none;
+  color: #a99b9b;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.steal-label {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #918585;
+  margin-bottom: 8px;
+}
+
+#steal-target-name {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+#steal-target-location {
+  font-size: 12px;
+  color: #929d8c;
+  margin-top: 5px;
+}
+
+.steal-divider {
+  height: 1px;
+  background: #49383b;
+  margin: 20px 0;
+}
+
+#steal-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.steal-item-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: #191416;
+  border: 1px solid #49383b;
+  border-radius: 4px;
+}
+
+.steal-item-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+.steal-item-quantity {
+  font-size: 12px;
+  color: #929d8c;
+}
+
+.steal-item-button {
+  padding: 7px 12px;
+  background: #583437;
+  border: 1px solid #795052;
+  border-radius: 4px;
+  color: #e3c9c9;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.steal-item-button:hover {
+  background: #714246;
+}
+
+.steal-item-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.steal-notice {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #a99b9b;
+}
+
+.steal-empty {
+  padding: 20px 10px;
+  text-align: center;
+  font-size: 12px;
+  color: #918585;
+}
+
+#steal-message,
+#steal-alert-message {
+  font-size: 12px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  color: #bd8585;
+}
+
+#steal-message:empty,
+#steal-alert-message:empty {
+  display: none;
+}
+
+.steal-alert-title {
+  text-align: center;
+  color: #bd8585;
+  letter-spacing: 4px;
+  font-size: 12px;
+}
+
+.steal-alert-heading {
+  text-align: center;
+  font-size: 21px;
+  color: #e1c5c5;
+  margin: 20px 0;
+}
+
+#steal-alert-content {
+  background: #191416;
+  border: 1px solid #583437;
+  padding: 20px;
+  margin: 20px 0;
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#steal-alert-confirm {
+  width: 100%;
+  padding: 12px;
+  margin-top: 20px;
+  background: #583437;
+  border: 1px solid #795052;
+  border-radius: 4px;
+  color: #e3c9c9;
+  cursor: pointer;
+}
+
+#steal-alert-confirm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 </style>
 </head>
 
@@ -2051,6 +2246,71 @@ label[for="admin-location-travel"] {
     </div>
 
     <p id="gift-message"></p>
+
+  </div>
+
+</div>
+  <!-- 아이템 강탈 모달 -->
+
+<div id="steal-modal">
+
+  <div class="steal-box">
+
+    <div class="steal-header">
+      <span>STEAL ITEM</span>
+      <button type="button" id="steal-close">×</button>
+    </div>
+
+    <div class="steal-label">TARGET SURVIVOR</div>
+
+    <div id="steal-target-name"></div>
+    <div id="steal-target-location"></div>
+
+    <div class="steal-divider"></div>
+
+    <div class="steal-label">TARGET INVENTORY</div>
+
+    <div id="steal-item-list"></div>
+
+    <div class="steal-divider"></div>
+
+    <div class="steal-notice">
+      성공 확률 : 40%<br>
+      실패 시 상대방에게 발각됩니다.
+    </div>
+
+    <p id="steal-message"></p>
+
+  </div>
+
+</div>
+
+
+<!-- 강탈 발각 경고 팝업 -->
+
+<div id="steal-alert-modal">
+
+  <div class="steal-box">
+
+    <div class="steal-alert-title">
+      WARNING
+    </div>
+
+    <h2 class="steal-alert-heading">
+      강탈 시도 감지
+    </h2>
+
+    <div id="steal-alert-content"></div>
+
+    <div class="steal-notice">
+      잃어버린 아이템은 없습니다.
+    </div>
+
+    <button type="button" id="steal-alert-confirm">
+      확인
+    </button>
+
+    <p id="steal-alert-message"></p>
 
   </div>
 
@@ -4069,7 +4329,9 @@ document.getElementById(
   'survivor-steal-btn'
 ).addEventListener('click', () => {
 
-  alert('훔치기 기능은 준비 중입니다.');
+  if (!selectedSurvivorId) return;
+
+  openStealModal(selectedSurvivorId);
 
 });
 
@@ -5147,6 +5409,564 @@ giftSubmit.onclick = async () => {
   }
 
 };
+  // =========================
+// 아이템 강탈 시스템
+// =========================
+
+let stealTargetId = null;
+let stealInventory = [];
+let stealSaving = false;
+let stealRequest = 0;
+
+const stealModal =
+  document.getElementById('steal-modal');
+
+const stealItemList =
+  document.getElementById('steal-item-list');
+
+const stealMessage =
+  document.getElementById('steal-message');
+
+
+// 강탈창 닫기
+
+function closeStealModal(force = false) {
+
+  if (stealSaving && !force) return;
+
+  stealRequest++;
+
+  stealTargetId = null;
+  stealInventory = [];
+  stealSaving = false;
+
+  stealModal.style.display = 'none';
+  stealItemList.innerHTML = '';
+  stealMessage.textContent = '';
+
+}
+
+
+// 상대방과 같은 장소인지 확인
+
+function getStealTarget(targetId) {
+
+  const self = mapPlayers.find(
+    player => player.user_id === mapCurrentUserId
+  );
+
+  const target = mapPlayers.find(
+    player => player.user_id === targetId
+  );
+
+  if (
+    !self ||
+    !target ||
+    self.user_id === target.user_id ||
+    !self.current_location_id ||
+    self.current_location_id !== target.current_location_id
+  ) {
+    return null;
+  }
+
+  return target;
+
+}
+
+
+// 강탈창 열기
+
+async function openStealModal(targetId) {
+
+  if (stealSaving) return;
+
+  const target = getStealTarget(targetId);
+
+  if (!target) {
+
+    alert(
+      '같은 장소에 있는 생존자의 아이템만 훔칠 수 있습니다.'
+    );
+
+    return;
+
+  }
+
+  const location = mapLocations.find(
+    item => item.id === target.current_location_id
+  );
+
+  stealTargetId = targetId;
+  stealInventory = [];
+
+  document.getElementById(
+    'steal-target-name'
+  ).textContent = target.player_name;
+
+  document.getElementById(
+    'steal-target-location'
+  ).textContent = location?.name || '알 수 없는 장소';
+
+  stealMessage.textContent = '';
+
+  stealModal.style.display = 'flex';
+
+  await loadStealInventory();
+
+}
+
+
+// 상대방 인벤토리 조회
+
+async function loadStealInventory() {
+
+  if (!stealTargetId) return;
+
+  const requestId = ++stealRequest;
+  const targetId = stealTargetId;
+
+  stealInventory = [];
+
+  stealItemList.innerHTML =
+    '<div class="steal-empty">인벤토리 확인 중...</div>';
+
+  try {
+
+    const { data, error } =
+      await supabaseClient.rpc(
+        'get_target_inventory',
+        {
+          p_target_user_id: targetId
+        }
+      );
+
+    if (requestId !== stealRequest) return;
+
+    if (error) throw error;
+
+    stealInventory = data || [];
+
+    renderStealInventory();
+
+  } catch (error) {
+
+    if (requestId !== stealRequest) return;
+
+    stealItemList.innerHTML = '';
+
+    stealMessage.textContent =
+      '인벤토리 조회 실패: ' + error.message;
+
+  }
+
+}
+
+
+// 상대방 아이템 목록 출력
+
+function renderStealInventory() {
+
+  stealItemList.innerHTML = '';
+
+  if (!stealInventory.length) {
+
+    stealItemList.innerHTML =
+      '<div class="steal-empty">보유한 아이템이 없습니다.</div>';
+
+    return;
+
+  }
+
+  stealInventory.forEach(item => {
+
+    const row = document.createElement('div');
+    row.className = 'steal-item-row';
+
+
+    const name = document.createElement('span');
+    name.className = 'steal-item-name';
+    name.textContent = item.item_name;
+
+
+    const quantity = document.createElement('span');
+    quantity.className = 'steal-item-quantity';
+    quantity.textContent = '×' + item.quantity;
+
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'steal-item-button';
+    button.textContent = '훔치기';
+    button.disabled = stealSaving;
+
+    button.onclick = () => {
+
+      attemptStealItem(item);
+
+    };
+
+
+    row.appendChild(name);
+    row.appendChild(quantity);
+    row.appendChild(button);
+
+    stealItemList.appendChild(row);
+
+  });
+
+}
+
+
+// 강탈 시도
+
+async function attemptStealItem(item) {
+
+  if (stealSaving || !stealTargetId) return;
+
+  const target = getStealTarget(stealTargetId);
+
+  if (!target) {
+
+    stealMessage.textContent =
+      '상대방이 현재 같은 장소에 있지 않습니다.';
+
+    return;
+
+  }
+
+  const confirmed = confirm(
+    `${target.player_name}의 ${item.item_name} ×1을 훔치시겠습니까?\n\n` +
+    '성공 확률: 40%\n' +
+    '실패 시 상대방에게 발각됩니다.'
+  );
+
+  if (!confirmed) return;
+
+  const requestId = stealRequest;
+  const targetId = stealTargetId;
+
+  stealSaving = true;
+
+  stealMessage.textContent = '강탈 시도 중...';
+
+  renderStealInventory();
+
+  try {
+
+    const { data, error } =
+      await supabaseClient.rpc(
+        'steal_player_item',
+        {
+          p_target_user_id: targetId,
+          p_item_id: item.item_id
+        }
+      );
+
+    if (requestId !== stealRequest) return;
+
+    if (error) throw error;
+
+
+    if (data.success) {
+
+      alert(
+        'STEAL SUCCESS\n\n' +
+        `${data.target_name}에게서 ${data.item_name} ×1을 훔쳤습니다.\n\n` +
+        '상대방에게 발각되지 않았습니다.'
+      );
+
+    } else {
+
+      alert(
+        'STEAL FAILED\n\n' +
+        `${data.target_name}의 ${data.item_name}을(를) 훔치려다 실패했습니다.\n\n` +
+        '상대방에게 발각되었습니다.'
+      );
+
+    }
+
+    stealMessage.textContent = '';
+
+    await Promise.all([
+      loadInventory(),
+      loadActivityLogs()
+    ]);
+
+  } catch (error) {
+
+    if (requestId !== stealRequest) return;
+
+    stealMessage.textContent =
+      '강탈 요청 실패: ' + error.message;
+
+  } finally {
+
+    if (requestId === stealRequest) {
+
+      stealSaving = false;
+
+      await loadStealInventory();
+
+    }
+
+  }
+
+}
+
+
+// 강탈창 닫기 버튼
+
+document.getElementById(
+  'steal-close'
+).onclick = () => {
+
+  closeStealModal();
+
+};
+
+
+stealModal.addEventListener('click', event => {
+
+  if (event.target === stealModal) {
+
+    closeStealModal();
+
+  }
+
+});
+
+
+// =========================
+// 강탈 발각 경고 팝업
+// =========================
+
+let currentStealAlert = null;
+let stealAlertLoading = false;
+let stealAlertSaving = false;
+let stealAlertRequest = 0;
+let stealAlertUserId = null;
+
+const stealAlertModal =
+  document.getElementById('steal-alert-modal');
+
+const stealAlertConfirm =
+  document.getElementById('steal-alert-confirm');
+
+const stealAlertMessage =
+  document.getElementById('steal-alert-message');
+
+
+// 발각 팝업 초기화
+
+function resetStealAlert() {
+
+  stealAlertRequest++;
+
+  currentStealAlert = null;
+  stealAlertLoading = false;
+  stealAlertSaving = false;
+  stealAlertUserId = null;
+
+  stealAlertModal.style.display = 'none';
+
+  stealAlertConfirm.disabled = false;
+  stealAlertMessage.textContent = '';
+
+}
+
+
+// 발각 팝업 표시
+
+function showStealAlert(data) {
+
+  currentStealAlert = data;
+
+  document.getElementById(
+    'steal-alert-content'
+  ).textContent =
+    `${data.attacker_name}이(가) 당신의 ${data.item_name}을(를) 훔치려다 발각되었습니다.`;
+
+  stealAlertMessage.textContent = '';
+
+  stealAlertConfirm.disabled = false;
+
+  stealAlertModal.style.display = 'flex';
+
+}
+
+
+// 미확인 발각 알림 조회
+
+async function loadUnreadStealAlert() {
+
+  if (
+    stealAlertLoading ||
+    stealAlertSaving ||
+    currentStealAlert
+  ) return;
+
+
+  // 조사 결과 팝업이 열려 있으면 대기
+
+  if (currentExploreResult) return;
+
+
+  const requestId = ++stealAlertRequest;
+
+  stealAlertLoading = true;
+
+  try {
+
+    const { data: sessionData } =
+      await supabaseClient.auth.getSession();
+
+    const user = sessionData.session?.user;
+
+    if (requestId !== stealAlertRequest) return;
+
+    if (
+      !user ||
+      (user.email || '').toLowerCase() === ADMIN_EMAIL
+    ) return;
+
+
+    const { data, error } =
+      await supabaseClient
+
+        .from('player_steal_alerts')
+
+        .select('*')
+
+        .eq('user_id', user.id)
+
+        .eq('is_read', false)
+
+        .order('created_at', { ascending: true })
+
+        .order('id', { ascending: true })
+
+        .limit(1)
+
+        .maybeSingle();
+
+
+    if (requestId !== stealAlertRequest) return;
+
+    if (error) throw error;
+
+    if (data && !currentExploreResult) {
+
+      stealAlertUserId = user.id;
+
+      showStealAlert(data);
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      '강탈 발각 알림 조회 실패:',
+      error
+    );
+
+  } finally {
+
+    if (requestId === stealAlertRequest) {
+
+      stealAlertLoading = false;
+
+    }
+
+  }
+
+}
+
+
+// 발각 팝업 확인 버튼
+
+stealAlertConfirm.onclick = async () => {
+
+  if (
+    !currentStealAlert ||
+    stealAlertSaving
+  ) return;
+
+  const requestId = stealAlertRequest;
+
+  const alertId = currentStealAlert.id;
+
+  stealAlertSaving = true;
+
+  stealAlertConfirm.disabled = true;
+
+  try {
+
+    const { data: sessionData } =
+      await supabaseClient.auth.getSession();
+
+    if (requestId !== stealAlertRequest) return;
+
+    if (
+      sessionData.session?.user?.id !== stealAlertUserId
+    ) {
+
+      resetStealAlert();
+
+      return;
+
+    }
+
+
+    const { error } =
+      await supabaseClient.rpc(
+        'mark_steal_alert_read',
+        {
+          p_alert_id: alertId
+        }
+      );
+
+
+    if (requestId !== stealAlertRequest) return;
+
+    if (error) throw error;
+
+
+    currentStealAlert = null;
+
+    stealAlertModal.style.display = 'none';
+
+    stealAlertMessage.textContent = '';
+
+  } catch (error) {
+
+    if (requestId !== stealAlertRequest) return;
+
+    stealAlertMessage.textContent =
+      '알림 확인 실패: ' + error.message;
+
+  } finally {
+
+    if (requestId === stealAlertRequest) {
+
+      stealAlertSaving = false;
+
+      stealAlertConfirm.disabled = false;
+
+    }
+
+  }
+
+
+  if (
+    requestId === stealAlertRequest &&
+    !currentStealAlert
+  ) {
+
+    await loadUnreadStealAlert();
+
+  }
+
+};
 function startMapPlayersRefresh() {
 
   stopMapPlayersRefresh();
@@ -5195,9 +6015,18 @@ await loadMapPlayers();
         ]);
 
 
-        // 미확인 조사 결과 확인
+   // 미확인 조사 결과 확인
 
-        await loadUnreadExploreResult();
+if (!currentStealAlert) {
+
+  await loadUnreadExploreResult();
+
+}
+
+
+// 미확인 강탈 발각 알림 확인
+
+await loadUnreadStealAlert();
 
       }
 
@@ -9634,7 +10463,13 @@ adminPlayerLocationSave.onclick = async () => {
 
 };
 async function checkPlayerAccess() {
-closeGiftModal(true);
+
+  closeGiftModal(true);
+
+  closeStealModal(true);
+
+  resetStealAlert();
+
   resetExploreResult();
 
   inventoryRequest++;
