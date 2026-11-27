@@ -477,6 +477,100 @@ input {
 .map-danger-3 {
   color: #9b304d;
 }
+  /* 관리자 장소 관리 */
+
+.admin-location-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.admin-location-field label {
+  font-size: 12px;
+  color: #a99da2;
+}
+
+.admin-location-field input,
+.admin-location-field textarea,
+.admin-location-field select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  background: #171416;
+  color: #d8cbd0;
+  border: 1px solid #49303a;
+  border-radius: 4px;
+}
+
+.admin-location-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px;
+  margin-bottom: 6px;
+  background: #171416;
+  border: 1px solid #49303a;
+  border-radius: 4px;
+}
+
+.admin-location-info {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-location-meta {
+  margin-top: 5px;
+  font-size: 11px;
+  color: #998c92;
+}
+
+.admin-location-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.admin-location-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+#admin-location-list {
+  max-height: 250px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #653448 #171416;
+}
+
+/* 지도 좌표 선택 모드 */
+
+#map.location-picking {
+  cursor: crosshair;
+}
+
+#map.location-picking .map-location {
+  pointer-events: none;
+}
+
+#map-pick-notice {
+  position: absolute;
+  top: 45px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: 10px 15px;
+  background: #211a1e;
+  border: 1px solid #d88ca3;
+  border-radius: 4px;
+  color: #d8cbd0;
+  font-size: 12px;
+  text-align: center;
+  pointer-events: none;
+}
 </style>
 </head>
 
@@ -495,6 +589,9 @@ input {
 </button>
   <button id="stat-admin-open" style="display:none;">
   능력치 관리
+</button>
+  <button id="location-admin-open" style="display:none;">
+  장소 관리
 </button>
   <button type="button" id="logout-btn" style="display:none;">로그아웃</button>
 </div>
@@ -1109,6 +1206,270 @@ input {
   </div>
 </div>
 <!-- 관리자 능력치 관리 끝 -->
+  <!-- 관리자 장소 관리 시작 -->
+
+<div id="location-admin-panel"
+     style="
+       display:none;
+       position:fixed;
+       inset:0;
+       z-index:9999;
+       background:rgba(0,0,0,0.8);
+       align-items:center;
+       justify-content:center;
+       padding:20px;
+       box-sizing:border-box;
+     ">
+
+  <div style="
+    width:100%;
+    max-width:650px;
+    max-height:85vh;
+    overflow-y:auto;
+    background:#211a1e;
+    border:1px solid #49303a;
+    border-radius:6px;
+    padding:20px;
+    box-sizing:border-box;
+  ">
+
+    <!-- 제목 -->
+
+    <div style="
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:20px;
+    ">
+
+      <div class="widget-title">
+        LOCATION MANAGEMENT
+      </div>
+
+      <button id="location-admin-close">
+        닫기
+      </button>
+
+    </div>
+
+
+    <!-- 등록된 장소 목록 -->
+
+    <div class="widget" style="margin-bottom:12px;">
+
+      <div class="widget-title">
+        LOCATION LIST
+      </div>
+
+      <div id="admin-location-list">
+        등록된 장소가 없습니다.
+      </div>
+
+    </div>
+
+
+    <!-- 장소 편집 영역 -->
+
+    <div class="widget">
+
+      <div class="widget-title" id="admin-location-editor-title">
+        LOCATION EDITOR / 새 장소
+      </div>
+
+
+      <!-- 장소 이름 -->
+
+      <div class="admin-location-field">
+
+        <label for="admin-location-name">
+          장소 이름
+        </label>
+
+        <input type="text"
+               id="admin-location-name"
+               maxlength="100"
+               placeholder="장소 이름 입력">
+
+      </div>
+
+
+      <!-- 장소 설명 -->
+
+      <div class="admin-location-field">
+
+        <label for="admin-location-description">
+          장소 설명
+        </label>
+
+        <textarea id="admin-location-description"
+                  placeholder="플레이어에게 공개할 장소 설명"
+                  style="min-height:80px;resize:vertical;"></textarea>
+
+      </div>
+
+
+      <!-- 지도 좌표 -->
+
+      <div class="admin-location-grid">
+
+        <div class="admin-location-field">
+
+          <label for="admin-location-x">
+            X 좌표
+          </label>
+
+          <input type="number"
+                 id="admin-location-x"
+                 step="1"
+                 value="0">
+
+        </div>
+
+        <div class="admin-location-field">
+
+          <label for="admin-location-y">
+            Y 좌표
+          </label>
+
+          <input type="number"
+                 id="admin-location-y"
+                 step="1"
+                 value="0">
+
+        </div>
+
+      </div>
+
+
+      <button id="admin-location-pick"
+              style="
+                width:100%;
+                margin-bottom:15px;
+                color:#d88ca3;
+              ">
+
+        지도에서 좌표 선택
+
+      </button>
+
+
+      <!-- 이동 및 조사 시간 -->
+
+      <div class="admin-location-grid">
+
+        <div class="admin-location-field">
+
+          <label for="admin-location-travel">
+            이동 시간 (분)
+          </label>
+
+          <input type="number"
+                 id="admin-location-travel"
+                 min="0"
+                 step="1"
+                 value="5">
+
+        </div>
+
+        <div class="admin-location-field">
+
+          <label for="admin-location-explore">
+            조사 시간 (분)
+          </label>
+
+          <input type="number"
+                 id="admin-location-explore"
+                 min="0"
+                 step="1"
+                 value="10">
+
+        </div>
+
+      </div>
+
+
+      <!-- 위험도 -->
+
+      <div class="admin-location-field">
+
+        <label for="admin-location-danger">
+          위험도
+        </label>
+
+        <select id="admin-location-danger">
+
+          <option value="0">0 - 안전</option>
+          <option value="1">1 - 낮음</option>
+          <option value="2">2 - 보통</option>
+          <option value="3">3 - 높음</option>
+
+        </select>
+
+      </div>
+
+
+      <!-- 공개 여부 -->
+
+      <label style="
+        display:flex;
+        align-items:center;
+        gap:8px;
+        font-size:12px;
+        color:#d8cbd0;
+        margin:15px 0;
+      ">
+
+        <input type="checkbox"
+               id="admin-location-visible"
+               checked>
+
+        플레이어에게 공개
+
+      </label>
+
+
+      <!-- 저장 버튼 -->
+
+      <div style="
+        display:flex;
+        justify-content:flex-end;
+        gap:8px;
+      ">
+
+        <button id="admin-location-new">
+          새 장소
+        </button>
+
+        <button id="admin-location-save"
+                style="
+                  background:#36594b;
+                  color:#b5dfc5;
+                  border:1px solid #789184;
+                ">
+
+          저장
+
+        </button>
+
+      </div>
+
+
+      <!-- 처리 결과 메시지 -->
+
+      <p id="admin-location-message"
+         style="
+           font-size:12px;
+           color:#d88ca3;
+           margin-top:12px;
+         "></p>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- 관리자 장소 관리 끝 -->
 <div class="dashboard">
 
   <!-- 왼쪽 플레이어 정보 -->
