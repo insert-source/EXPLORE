@@ -2510,11 +2510,11 @@ label[for="admin-location-travel"] {
 
     <p id="auth-message" style="font-size:12px;color:#d88ca3;"></p>
 
-    <button id="auth-close" style="
-      width:100%;margin-top:8px;padding:11px;
-      background:transparent;color:#aaa;
-      border:1px solid #49303a;cursor:pointer;
-    ">닫기</button>
+ <button id="auth-switch" type="button" style="
+  width:100%;margin-top:8px;padding:11px;
+  background:transparent;color:#a8bdb0;
+  border:1px solid #526b5c;cursor:pointer;
+">회원가입</button>
 
   </div>
 </div>
@@ -6758,11 +6758,14 @@ document.getElementById('admin-close').onclick = () => {
   document.getElementById('admin-panel').style.display = 'none';
 };
 
+const authSwitch = document.getElementById('auth-switch');
+
 // 로그인 창
 loginOpen.onclick = () => {
   authMode = 'login';
   authTitle.textContent = 'LOGIN';
   authSubmit.textContent = '로그인';
+  authSwitch.textContent = '회원가입';
   authMessage.textContent = '';
   signupFields.style.display = 'none';
   authModal.style.display = 'flex';
@@ -6773,13 +6776,23 @@ signupOpen.onclick = () => {
   authMode = 'signup';
   authTitle.textContent = 'SIGN UP';
   authSubmit.textContent = '회원가입';
+  authSwitch.textContent = '로그인으로 돌아가기';
   authMessage.textContent = '';
   signupFields.style.display = 'block';
   authModal.style.display = 'flex';
 };
 
-document.getElementById('auth-close').onclick = () => {
-  authModal.style.display = 'none';
+// 로그인 / 회원가입 화면 전환
+authSwitch.onclick = () => {
+
+  if (authSubmit.disabled) return;
+
+  if (authMode === 'login') {
+    signupOpen.click();
+  } else {
+    loginOpen.click();
+  }
+
 };
 
 // 캐릭터 이름을 내부 인증용 주소로 변환
