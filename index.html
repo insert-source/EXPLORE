@@ -378,26 +378,39 @@ input {
         SURVIVOR REGISTRATION
       </h3>
 
-      <label>플레이어 이름</label>
-      <input id="player-name" type="text"
-        placeholder="플레이어 이름"
-        style="width:100%;box-sizing:border-box;padding:11px;margin:8px 0 15px;background:#1b191b;color:#eee;border:1px solid #49303a;">
+     
 
-      <label>체력</label>
-      <input id="player-health" type="number" min="0" max="100" value="0"
-        style="width:100%;box-sizing:border-box;padding:11px;margin:8px 0 15px;background:#1b191b;color:#eee;border:1px solid #49303a;">
+     <div class="stat-control">
+  <label>체력</label>
+  <div class="stat-adjust">
+    <button type="button" onclick="changeSignupStat('health', -5)">−</button>
+    <span id="signup-health-value">0</span>
+    <button type="button" onclick="changeSignupStat('health', 5)">+</button>
+  </div>
+</div>
 
-      <label>정신력</label>
-      <input id="player-mental" type="number" min="0" max="100" value="0"
-        style="width:100%;box-sizing:border-box;padding:11px;margin:8px 0 15px;background:#1b191b;color:#eee;border:1px solid #49303a;">
+<div class="stat-control">
+  <label>정신력</label>
+  <div class="stat-adjust">
+    <button type="button" onclick="changeSignupStat('mental', -5)">−</button>
+    <span id="signup-mental-value">0</span>
+    <button type="button" onclick="changeSignupStat('mental', 5)">+</button>
+  </div>
+</div>
 
-      <label>허기</label>
-      <input id="player-hunger" type="number" min="0" max="100" value="0"
-        style="width:100%;box-sizing:border-box;padding:11px;margin:8px 0 15px;background:#1b191b;color:#eee;border:1px solid #49303a;">
+<div class="stat-control">
+  <label>허기</label>
+  <div class="stat-adjust">
+    <button type="button" onclick="changeSignupStat('hunger', -5)">−</button>
+    <span id="signup-hunger-value">0</span>
+    <button type="button" onclick="changeSignupStat('hunger', 5)">+</button>
+  </div>
+</div>
 
-      <p style="font-size:11px;color:#bd6b83;">
-        ※ 세 수치의 합계는 100을 초과할 수 없습니다.
-      </p>
+<p style="font-size:11px;color:#bd6b83;">
+  ※ 각 수치는 5단위로 조절되며 세 수치의 합계는 100을 초과할 수 없습니다.
+</p>
+
 
       <label>초기 보유 아이템 1</label>
       <input id="player-item1" type="text"
@@ -514,7 +527,41 @@ input {
 </div>
       </div>
     </section>
+    <section class="widget">
+      <div class="widget-title">LAST WILL</div>
 
+      <textarea
+        id="player-will-display"
+        placeholder="마지막으로 남기고 싶은 말을 작성하세요..."
+        rows="6"
+        style="
+          width:100%;
+          box-sizing:border-box;
+          resize:vertical;
+          padding:12px;
+          background:#1b191b;
+          color:#eee;
+          border:1px solid #49303a;
+          font-family:inherit;
+          margin-top:10px;
+        "
+      ></textarea>
+
+      <button id="save-will-btn" type="button"
+        style="
+          width:100%;
+          margin-top:10px;
+          padding:10px;
+          background:#713348;
+          color:white;
+          border:1px solid #a05b72;
+          cursor:pointer;
+        ">
+        유서 저장
+      </button>
+
+      <p id="will-message" style="font-size:12px;color:#d88ca3;"></p>
+    </section>
     <section class="widget">
       <div class="widget-title">INVENTORY</div>
 
@@ -671,6 +718,34 @@ const authSubmit = document.getElementById('auth-submit');
 const authMessage = document.getElementById('auth-message');
 
 let authMode = 'login';
+  const signupStats = {
+  health: 0,
+  mental: 0,
+  hunger: 0
+};
+
+function changeSignupStat(type, amount) {
+  const current = signupStats[type];
+  const next = current + amount;
+
+  if (next < 0 || next > 100) return;
+
+  const total =
+    signupStats.health +
+    signupStats.mental +
+    signupStats.hunger;
+
+  if (amount > 0 && total + amount > 100) {
+    authMessage.textContent = '세 수치의 합계는 100을 초과할 수 없습니다.';
+    return;
+  }
+
+  signupStats[type] = next;
+
+  document.getElementById(`signup-${type}-value`).textContent = next;
+
+  authMessage.textContent = '';
+}
 
 const loginOpen = document.getElementById('login-open');
 const signupOpen = document.getElementById('signup-open');
@@ -758,17 +833,17 @@ authSubmit.onclick = async () => {
       }
 
       const { error: saveError } = await supabaseClient.rpc(
-        'save_signup_profile',
-        {
-          p_player_name: playerName,
-          p_health: health,
-          p_mental: mental,
-          p_hunger: hunger,
-          p_item1: item1,
-          p_item2: item2,
-          p_will: will
-        }
-      );
+  'save_signup_profile',
+  {
+    p_player_name: email,
+    p_health: signupStats.health,
+    p_mental: signupStats.mental,
+    p_hunger: signupStats.hunger,
+    p_item1: item1,
+    p_item2: item2,
+    p_will: will
+  }
+);
 
       if (saveError) throw saveError;
 
@@ -814,7 +889,9 @@ function renderPlayerProfile(profile) {
     `${profile.hunger} / 100`;
   document.getElementById('hunger-fill').style.width =
     `${profile.hunger}%`;
-
+  // 유서 표시
+  document.getElementById('player-will-display').value =
+    profile.will || '';
   // 아이템 목록
   const inventory = document.getElementById('inventory-list');
   inventory.innerHTML = '';
