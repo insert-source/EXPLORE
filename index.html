@@ -1331,13 +1331,290 @@ const itemAdminPanel =
 const itemAdminClose =
   document.getElementById('item-admin-close');
 
-itemAdminOpen.onclick = () => {
+itemAdminOpen.onclick = async () => {
   itemAdminPanel.style.display = 'flex';
+
+  resetAdminItemEditor();
+
+  await loadAdminItems();
 };
 
 itemAdminClose.onclick = () => {
   itemAdminPanel.style.display = 'none';
 };
+  // 관리자 아이템 관리
+let editingItemId = null;
+
+// 전체 아이템 목록 불러오기
+async function loadAdminItems() {
+  const list = document.getElementById('admin-item-list');
+  const select = document.getElementById('admin-inventory-item');
+
+  list.textContent = '아이템 목록을 불러오는 중...';
+
+  const { data, error } = await supabaseClient
+    .from('items')
+    .select('*')
+    .order('name', { ascending: true });
+
+  if (error) {
+    list.textContent = '조회 실패: ' + error.message;
+    select.innerHTML = '';
+    return;
+  }
+
+  list.innerHTML = '';
+  select.innerHTML = '';
+
+  if (!data.length) {
+    list.textContent = '등록된 아이템이 없습니다.';
+    return;
+  }
+
+  data.forEach(item => {
+    const row = document.createElement('div');
+
+    row.style.cssText = `
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      padding:10px;
+      margin-top:6px;
+      background:#171416;
+      border:1px solid #49303a;
+      border-radius:5px;
+    `;
+
+    const info = document.createElement('div');
+
+    const name = document.createElement('div');
+    name.textContent = item.name;
+    name.style.color = '#eeeeee';
+
+    const status = document.createElement('div');
+    status.style.fontSize = '11px';
+    status.style.color = '#998c92';
+
+    status.textContent =
+      (item.usable ? '사용 가능' : '사용 불가') +
+      ' / ' +
+      (item.consumable ? '소모품' : '비소모품');
+
+    info.append(name, status);
+
+    const buttons = document.createElement('div');
+    buttons.style.display = 'flex';
+    buttons.style.gap = '6px';
+
+    const editBtn = document.createElement('button');
+    editBtn.textContent = '수정';
+    editBtn.onclick = () => editAdminItem(item);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '삭제';
+    deleteBtn.style.background = '#6e263d';
+    deleteBtn.style.color = '#ffffff';
+    deleteBtn.onclick = () => deleteAdminItem(item);
+
+    buttons.append(editBtn, deleteBtn);
+    row.append(info, buttons);
+    list.appendChild(row);
+
+    // 지급 및 회수용 아이템 선택 목록
+    const option = document.createElement('option');
+    option.value = item.id;
+    option.textContent = item.name;
+
+    select.appendChild(option);
+  });
+}
+  // 기존 아이템 수정
+function editAdminItem(item) {
+  editingItemId = item.id;
+
+  document.getElementById('admin-item-name').value =
+    item.name;
+
+  document.getElementById('admin-item-description').value =
+    item.description || '';
+
+  document.getElementById('admin-item-health').value =
+    item.health_effect;
+
+  document.getElementById('admin-item-mental').value =
+    item.mental_effect;
+
+  document.getElementById('admin-item-hunger').value =
+    item.hunger_effect;
+
+  document.getElementById('admin-item-usable').checked =
+    item.usable;
+
+  document.getElementById('admin-item-consumable').checked =
+    item.consumable;
+
+  document.getElementById('admin-item-message').textContent =
+    item.name + ' 수정 중';
+
+  document.getElementById('admin-item-name').focus();
+}
+
+
+// 신규 아이템 입력 상태로 초기화
+function resetAdminItemEditor() {
+  editingItemId = null;
+
+  document.getElementById('admin-item-name').value = '';
+  document.getElementById('admin-item-description').value = '';
+
+  document.getElementById('admin-item-health').value = 0;
+  document.getElementById('admin-item-mental').value = 0;
+  document.getElementById('admin-item-hunger').value = 0;
+
+  document.getElementById('admin-item-usable').checked = false;
+  document.getElementById('admin-item-consumable').checked = false;
+
+  document.getElementById('admin-item-message').textContent =
+    '신규 아이템 등록 중';
+}
+
+document.getElementById('admin-item-new').onclick =
+  resetAdminItemEditor;
+  // 아이템 저장
+async function saveAdminItem() {
+  const message =
+    document.getElementById('admin-item-message');
+
+  const saveBtn =
+    document.getElementById('admin-item-save');
+
+  const item = {
+    name: document.getElementById('admin-item-name')
+      .value.trim(),
+
+    description: document.getElementById('admin-item-description')
+      .value.trim(),
+
+    health_effect: Number(
+      document.getElementById('admin-item-health').value
+    ),
+
+    mental_effect: Number(
+      document.getElementById('admin-item-mental').value
+    ),
+
+    hunger_effect: Number(
+      document.getElementById('admin-item-hunger').value
+    ),
+
+    usable: document.getElementById('admin-item-usable').checked,
+
+    consumable: document.getElementById('admin-item-consumable').checked
+  };
+
+  if (!item.name) {
+    message.textContent = '아이템 이름을 입력해 주세요.';
+    return;
+  }
+
+  const effects = [
+    item.health_effect,
+    item.mental_effect,
+    item.hunger_effect
+  ];
+
+  if (effects.some(value =>
+    !Number.isInteger(value) ||
+    value < -100 ||
+    value > 100
+  )) {
+    message.textContent =
+      '능력치 변화량은 -100부터 100까지의 정수여야 합니다.';
+    return;
+  }
+
+  if (item.usable && !item.consumable &&
+      effects.some(value => value !== 0)) {
+    message.textContent =
+      '능력치에 영향을 주는 사용 가능 아이템은 소모품으로 설정해 주세요.';
+    return;
+  }
+
+  saveBtn.disabled = true;
+  message.textContent = '저장 중...';
+
+  try {
+    let result;
+
+    if (editingItemId) {
+      result = await supabaseClient
+        .from('items')
+        .update(item)
+        .eq('id', editingItemId)
+        .select('id')
+        .single();
+    } else {
+      result = await supabaseClient
+        .from('items')
+        .insert(item)
+        .select('id')
+        .single();
+    }
+
+    if (result.error) throw result.error;
+
+    resetAdminItemEditor();
+
+    await loadAdminItems();
+
+    message.textContent = '아이템 저장 완료!';
+
+  } catch (error) {
+    message.textContent = '저장 실패: ' + error.message;
+  } finally {
+    saveBtn.disabled = false;
+  }
+}
+
+document.getElementById('admin-item-save').onclick =
+  saveAdminItem;
+  // 아이템 삭제
+async function deleteAdminItem(item) {
+  const confirmed = confirm(
+    `${item.name} 아이템을 삭제하시겠습니까?\n\n` +
+    '인벤토리에 연결된 아이템은 삭제할 수 없습니다.'
+  );
+
+  if (!confirmed) return;
+
+  const { error } = await supabaseClient
+    .from('items')
+    .delete()
+    .eq('id', item.id)
+    .select('id')
+    .single();
+
+  if (error) {
+    if (error.code === '23503') {
+      alert(
+        '플레이어 인벤토리에 연결된 아이템은 삭제할 수 없습니다.'
+      );
+    } else {
+      alert('삭제 실패: ' + error.message);
+    }
+
+    return;
+  }
+
+  if (editingItemId === item.id) {
+    resetAdminItemEditor();
+  }
+
+  alert('아이템이 삭제되었습니다.');
+
+  await loadAdminItems();
+}
 async function checkPlayerAccess() {
   const { data: sessionData } =
     await supabaseClient.auth.getSession();
