@@ -1862,37 +1862,6 @@ map.addEventListener("wheel", (e) => {
 
 
 updateMap();
-});
-
-map.addEventListener("pointerup", () => {
-  dragging = false;
-  map.classList.remove("dragging");
-});
-
-map.addEventListener("pointercancel", () => {
-  dragging = false;
-  map.classList.remove("dragging");
-});
-
-map.addEventListener("wheel", (e) => {
-  e.preventDefault();
-
-  const oldScale = scale;
-  const rect = map.getBoundingClientRect();
-
-  const mouseX = e.clientX - rect.left;
-  const mouseY = e.clientY - rect.top;
-
-  scale *= e.deltaY < 0 ? 1.1 : 0.9;
-  scale = Math.max(0.25, Math.min(3, scale));
-
-  x = mouseX - (mouseX - x) * (scale / oldScale);
-  y = mouseY - (mouseY - y) * (scale / oldScale);
-
-  updateMap();
-}, { passive: false });
-
-updateMap();
 </script>
 <script>
 const ADMIN_EMAIL = 'ssuejjang1@gmail.com';
@@ -2490,9 +2459,12 @@ function renderPlayerProfile(profile) {
 
   // 활동 로그 불러오기
   loadActivityLogs();
-}
+
+  // 지도 장소 불러오기
   loadMapLocations();
-  // 유서 저장
+}
+
+// 유서 저장
 document.getElementById('save-will-btn').addEventListener('click', async () => {
   const willText = document.getElementById('player-will-display').value;
   const message = document.getElementById('will-message');
