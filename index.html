@@ -1431,6 +1431,84 @@ label[for="admin-location-travel"] {
 #admin-location-travel {
   display: none !important;
 }
+  /* 장소별 아이템 획득 확률 */
+
+.item-drop-settings {
+  padding: 14px;
+  margin: 8px 0;
+  background: #171416;
+  border: 1px solid #49303a;
+  border-radius: 5px;
+}
+
+.item-drop-notice {
+  color: #998c92;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.item-drop-row {
+  padding: 12px 0;
+  border-bottom: 1px solid #35282e;
+}
+
+.item-drop-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.item-drop-name {
+  color: #d8cbd0;
+  font-size: 13px;
+  font-weight: bold;
+  overflow-wrap: anywhere;
+}
+
+.item-drop-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #998c92;
+  font-size: 12px;
+}
+
+.item-drop-input input {
+  width: 65px;
+  text-align: center;
+}
+
+.item-drop-meta {
+  margin-top: 7px;
+  color: #789184;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.item-drop-meta.is-invalid {
+  color: #d88ca3;
+}
+
+#admin-item-drop-save {
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px;
+  background: #36594b;
+  border-color: #789184;
+  color: #b5dfc5;
+}
+
+#admin-item-drop-save:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+#admin-item-drop-message {
+  color: #d88ca3;
+  font-size: 11px;
+  line-height: 1.6;
+}
 </style>
 </head>
 
@@ -1802,12 +1880,38 @@ label[for="admin-location-travel"] {
           사용 가능
         </label>
 
-        <label>
-          <input type="checkbox" id="admin-item-consumable">
-          사용 시 소모
-        </label>
+      <label>
+  <input type="checkbox" id="admin-item-consumable">
+  사용 시 소모
+</label>
 
-        <div style="display:flex;gap:8px;">
+<!-- 장소별 아이템 획득 확률 -->
+<div class="item-drop-settings">
+
+  <div class="widget-title">
+    DROP PROBABILITY
+  </div>
+
+  <p class="item-drop-notice">
+    장소별 아이템 획득 확률을 설정합니다.
+    한 장소의 전체 획득 확률은 100%를 초과할 수 없습니다.
+  </p>
+
+  <div id="admin-item-drop-list">
+    아이템을 선택해 주세요.
+  </div>
+
+  <button type="button"
+          id="admin-item-drop-save"
+          disabled>
+    획득 확률 저장
+  </button>
+
+  <p id="admin-item-drop-message"></p>
+
+</div>
+
+<div style="display:flex;gap:8px;">
           <button id="admin-item-new">신규 등록</button>
           <button id="admin-item-save">저장</button>
         </div>
