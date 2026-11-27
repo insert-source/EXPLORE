@@ -3255,6 +3255,19 @@ label[for="admin-location-travel"] {
   font-weight: 600;
   overflow-wrap: anywhere;
 }
+
+/* LOCATION EDITOR two-column layout */
+.location-editor-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.location-editor-columns > div { min-width: 0; }
+.location-editor-penalty > .location-loss-settings { margin-top: 0; }
+@media (max-width: 1050px) {
+  .location-editor-columns { grid-template-columns: minmax(0, 1fr); }
+}
 </style>
 </head>
 
@@ -4612,6 +4625,8 @@ max-width:calc(100vw - 30px);
       </div>
 
 
+      <div class="location-editor-columns">
+        <div class="location-editor-basic">
       <!-- 장소 이름 -->
 
       <div class="admin-location-field">
@@ -4725,6 +4740,8 @@ max-width:calc(100vw - 30px);
 
     
 
+        </div>
+        <div class="location-editor-penalty">
 <!-- 조사 능력치 감소 설정 -->
 
 <div class="location-loss-settings">
@@ -4840,6 +4857,9 @@ max-width:calc(100vw - 30px);
 
   비밀 장소 (발견 후 조사 가능)
 </label>
+
+        </div>
+      </div>
 
       <!-- 저장 버튼 -->
 
