@@ -2663,6 +2663,97 @@ label[for="admin-location-travel"] {
   line-height: 1.7;
   text-align: center;
 }
+  /* 사망자 소지품 목록 */
+
+#dead-inventory-section {
+  display: none;
+  margin-top: 18px;
+  padding-top: 15px;
+  border-top: 1px solid #383838;
+}
+
+.dead-inventory-title {
+  color: #999999;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+}
+
+.dead-inventory-item {
+  padding: 12px;
+  margin-bottom: 8px;
+  background: #141414;
+  border: 1px solid #383838;
+  border-radius: 4px;
+}
+
+.dead-inventory-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #cccccc;
+  overflow-wrap: anywhere;
+}
+
+.dead-inventory-count {
+  color: #999999;
+  flex-shrink: 0;
+}
+
+.dead-loot-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dead-loot-controls button {
+  flex: 1;
+  padding: 6px;
+  background: #303030;
+  border-color: #555555;
+  color: #cccccc;
+}
+
+.dead-loot-quantity {
+  width: 65px;
+  text-align: center;
+  background: #1c1c1c;
+  border-color: #555555;
+  color: #cccccc;
+}
+
+.dead-loot-submit {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  background: #36594b;
+  border-color: #789184;
+  color: #b5dfc5;
+  font-size: 12px;
+}
+
+#dead-inventory-section button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+#dead-inventory-message {
+  color: #999999;
+  font-size: 11px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.dead-inventory-empty {
+  padding: 15px 0;
+  text-align: center;
+  color: #777777;
+  font-size: 12px;
+}
 </style>
 </head>
 
@@ -4891,6 +4982,8 @@ let deadDetailRequest = 0;
 
 function closeDeadDetail() {
 
+  resetDeadInventory();
+
   deadDetailRequest++;
 
   selectedDeadPlayerId = null;
@@ -4925,6 +5018,8 @@ function formatDeathTime(value) {
 
 
 async function openDeadDetail(targetId) {
+
+  resetDeadInventory();
 
   const requestId = ++deadDetailRequest;
 
@@ -5061,8 +5156,12 @@ async function openDeadDetail(targetId) {
 
 }
   // 사망자 상세창 이벤트
-
 document.addEventListener('DOMContentLoaded', () => {
+
+  document.getElementById(
+    'dead-detail-loot'
+  ).addEventListener('click', loadDeadInventory);
+
 
   document.getElementById(
     'dead-detail-close'
@@ -5093,6 +5192,427 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 });
+  // 사망자 소지품 획득 시스템
+
+let deadInventoryRequest = 0;
+
+let deadInventorySaving = false;
+
+
+function resetDeadInventory() {
+
+  deadInventoryRequest++;
+
+  deadInventorySaving = false;
+
+  document.getElementById(
+    'dead-inventory-section'
+  ).style.display = 'none';
+
+  document.getElementById(
+    'dead-inventory-list'
+  ).replaceChildren();
+
+  document.getElementById(
+    'dead-inventory-message'
+  ).textContent = '';
+
+}
+
+
+// 사망자 소지품 조회
+
+async function loadDeadInventory() {
+
+  if (!selectedDeadPlayerId) return;
+
+  if (!currentDeadDetail?.can_loot) return;
+
+  if (deadInventorySaving) return;
+
+
+  const targetId = selectedDeadPlayerId;
+
+  const requestId = ++deadInventoryRequest;
+
+
+  const section = document.getElementById(
+    'dead-inventory-section'
+  );
+
+  const list = document.getElementById(
+    'dead-inventory-list'
+  );
+
+  const message = document.getElementById(
+    'dead-inventory-message'
+  );
+
+
+  section.style.display = 'block';
+
+  list.replaceChildren();
+
+  message.textContent =
+    '소지품을 확인하는 중입니다.';
+
+
+  const { data, error } = await supabaseClient.rpc(
+
+    'get_dead_player_inventory',
+
+    {
+      p_target_user_id: targetId
+    }
+
+  );
+
+
+  if (
+    requestId !== deadInventoryRequest ||
+    targetId !== selectedDeadPlayerId
+  ) return;
+
+
+  if (error) {
+
+    message.textContent = error.message;
+
+    return;
+
+  }
+
+
+  message.textContent = '';
+
+  renderDeadInventory(data || []);
+
+}
+
+
+// 사망자 소지품 목록 표시
+
+function renderDeadInventory(items) {
+
+  const list = document.getElementById(
+    'dead-inventory-list'
+  );
+
+  list.replaceChildren();
+
+
+  if (!items.length) {
+
+    const empty = document.createElement('div');
+
+    empty.className = 'dead-inventory-empty';
+
+    empty.textContent =
+      '남아 있는 소지품이 없습니다.';
+
+    list.appendChild(empty);
+
+    return;
+
+  }
+
+
+  items.forEach(item => {
+
+    const maxQuantity = Number(item.quantity);
+
+    if (maxQuantity <= 0) return;
+
+
+    const card = document.createElement('div');
+
+    card.className = 'dead-inventory-item';
+
+
+    const header = document.createElement('div');
+
+    header.className =
+      'dead-inventory-item-header';
+
+
+    const name = document.createElement('span');
+
+    name.textContent = item.item_name;
+
+
+    const count = document.createElement('span');
+
+    count.className = 'dead-inventory-count';
+
+    count.textContent = `× ${maxQuantity}`;
+
+
+    header.append(name, count);
+
+
+    const controls = document.createElement('div');
+
+    controls.className = 'dead-loot-controls';
+
+
+    const minus = document.createElement('button');
+
+    minus.type = 'button';
+
+    minus.textContent = '−';
+
+
+    const quantity = document.createElement('input');
+
+    quantity.type = 'number';
+
+    quantity.className = 'dead-loot-quantity';
+
+    quantity.min = '1';
+
+    quantity.max = String(maxQuantity);
+
+    quantity.step = '1';
+
+    quantity.value = '1';
+
+
+    const plus = document.createElement('button');
+
+    plus.type = 'button';
+
+    plus.textContent = '+';
+
+
+    function normalizeQuantity() {
+
+      const value = Math.floor(
+        Number(quantity.value) || 1
+      );
+
+      const normalized = Math.max(
+        1,
+        Math.min(maxQuantity, value)
+      );
+
+      quantity.value = String(normalized);
+
+      minus.disabled = normalized <= 1;
+
+      plus.disabled = normalized >= maxQuantity;
+
+      return normalized;
+
+    }
+
+
+    minus.addEventListener('click', () => {
+
+      if (deadInventorySaving) return;
+
+      quantity.value =
+        Number(quantity.value) - 1;
+
+      normalizeQuantity();
+
+    });
+
+
+    plus.addEventListener('click', () => {
+
+      if (deadInventorySaving) return;
+
+      quantity.value =
+        Number(quantity.value) + 1;
+
+      normalizeQuantity();
+
+    });
+
+
+    quantity.addEventListener(
+      'change',
+      normalizeQuantity
+    );
+
+
+    controls.append(minus, quantity, plus);
+
+
+    const submit = document.createElement('button');
+
+    submit.type = 'button';
+
+    submit.className = 'dead-loot-submit';
+
+    submit.textContent = '획득';
+
+
+    submit.addEventListener('click', () => {
+
+      lootDeadPlayerItem(
+        item,
+        normalizeQuantity()
+      );
+
+    });
+
+
+    normalizeQuantity();
+
+    card.append(header, controls, submit);
+
+    list.appendChild(card);
+
+  });
+
+}
+
+
+// 사망자 소지품 획득
+
+async function lootDeadPlayerItem(item, quantity) {
+
+  if (deadInventorySaving) return;
+
+  if (!selectedDeadPlayerId) return;
+
+  if (!currentDeadDetail?.can_loot) return;
+
+
+  const targetId = selectedDeadPlayerId;
+
+  const targetName = currentDeadDetail.player_name;
+
+
+  const confirmed = confirm(
+
+    `${targetName}의 소지품에서\n` +
+
+    `${item.item_name} ×${quantity}을(를)\n` +
+
+    `획득하시겠습니까?`
+
+  );
+
+
+  if (!confirmed) return;
+
+
+  deadInventorySaving = true;
+
+  const requestId = ++deadInventoryRequest;
+
+
+  const message = document.getElementById(
+    'dead-inventory-message'
+  );
+
+
+  const controls = document.querySelectorAll(
+    '#dead-inventory-section button, ' +
+    '#dead-inventory-section input'
+  );
+
+
+  controls.forEach(element => {
+
+    element.disabled = true;
+
+  });
+
+
+  message.textContent = '획득 처리 중입니다.';
+
+
+  try {
+
+    const { data, error } = await supabaseClient.rpc(
+
+      'loot_dead_player_item',
+
+      {
+        p_target_user_id: targetId,
+        p_item_id: item.item_id,
+        p_quantity: quantity
+      }
+
+    );
+
+
+    if (
+      requestId !== deadInventoryRequest ||
+      targetId !== selectedDeadPlayerId
+    ) return;
+
+
+    if (error) {
+
+      deadInventorySaving = false;
+
+      await loadDeadInventory();
+
+      if (targetId === selectedDeadPlayerId) {
+
+        message.textContent = error.message;
+
+      }
+
+      return;
+
+    }
+
+
+    deadInventorySaving = false;
+
+
+    await Promise.all([
+
+      loadInventory(),
+
+      loadActivityLogs(),
+
+      loadDeadInventory()
+
+    ]);
+
+
+    if (targetId !== selectedDeadPlayerId) return;
+
+
+    message.textContent =
+
+      `${data.item_name} ×${data.quantity} 획득 완료.`;
+
+
+  } catch (error) {
+
+    if (requestId === deadInventoryRequest) {
+
+      deadInventorySaving = false;
+
+      message.textContent =
+        error.message || '획득 처리에 실패했습니다.';
+
+      controls.forEach(element => {
+
+        element.disabled = false;
+
+      });
+
+    }
+
+  } finally {
+
+    if (requestId === deadInventoryRequest) {
+
+      deadInventorySaving = false;
+
+    }
+
+  }
+
+}
 function createDeadPlayerEntry(player) {
 
   const entry = document.createElement('div');
@@ -12797,7 +13317,19 @@ checkPlayerAccess();
 
 
     <p id="dead-detail-message"></p>
+<!-- 사망자 소지품 목록 -->
 
+<div id="dead-inventory-section">
+
+  <div class="dead-inventory-title">
+    INVENTORY
+  </div>
+
+  <div id="dead-inventory-list"></div>
+
+  <p id="dead-inventory-message"></p>
+
+</div>
   </div>
 
 </div>
