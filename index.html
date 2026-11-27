@@ -1259,11 +1259,7 @@ top: 0;
   color: #d9ba82;
 }
 
-#survivor-pvp-btn {
-  background: #54283a;
-  border-color: #854057;
-  color: #e5a0b5;
-}
+
 
 .survivor-detail-actions button:disabled {
   opacity: 0.3;
@@ -2492,52 +2488,7 @@ label[for="admin-location-travel"] {
       <input id="player-item2" type="text"
         placeholder="아이템 이름"
         style="width:100%;box-sizing:border-box;padding:11px;margin:8px 0 20px;background:#1b191b;color:#eee;border:1px solid #49303a;">
-<!-- PVP 참여 동의 -->
 
-<div style="
-  padding:14px;
-  margin:0 0 20px;
-  background:#171416;
-  border:1px solid #49303a;
-  border-radius:4px;
-">
-
-  <div style="
-    color:#bd6b83;
-    font-size:12px;
-    font-weight:bold;
-    letter-spacing:1px;
-    margin-bottom:12px;
-  ">
-    PVP AGREEMENT
-  </div>
-
-  <label style="
-    display:flex;
-    align-items:center;
-    gap:8px;
-    font-size:12px;
-    cursor:pointer;
-  ">
-
-    <input type="checkbox" id="signup-pvp-enabled">
-
-    다른 플레이어와의 PVP에 동의합니다.
-
-  </label>
-
-  <div style="
-    font-size:11px;
-    color:#998c92;
-    line-height:1.7;
-    margin-top:10px;
-  ">
-    ※ 동의하지 않을 경우 PVP 신청 및 수신이 불가능합니다.<br>
-    ※ 동의하더라도 개별 전투 신청을 거절할 수 있습니다.<br>
-    ※ 선물하기 및 훔치기는 PVP 동의 여부와 관계없이 적용됩니다.
-  </div>
-
-</div>
       <label style="color:#bd6b83;">LAST WILL / 유서</label>
       <textarea id="player-will"
         placeholder="마지막으로 남기고 싶은 말을 작성하세요..."
@@ -3903,7 +3854,7 @@ renderMapPlayers();
 
 refreshSurvivorDetail();
 
-if (selectedSurvivorId) loadSurvivorPvpSettings();
+
 
 }
 
@@ -3953,8 +3904,6 @@ document.addEventListener('keydown', event => {
   // 캐릭터 상세창
 
 let selectedSurvivorId = null;
-let survivorPvpSettings = new Map();
-let survivorDetailRequest = 0;
 
 const survivorDetailPanel = document.createElement('div');
 
@@ -3978,11 +3927,7 @@ survivorDetailPanel.innerHTML = `
             id="survivor-detail-location"></span>
     </div>
 
-    <div class="survivor-detail-row">
-      <span>PVP / 전투 동의</span>
-      <span class="survivor-detail-value"
-            id="survivor-detail-pvp"></span>
-    </div>
+    
 
     <div class="survivor-detail-row">
       <span>STATUS / 접촉 상태</span>
@@ -3995,52 +3940,13 @@ survivorDetailPanel.innerHTML = `
   <div class="survivor-detail-actions">
     <button id="survivor-gift-btn">선물하기</button>
     <button id="survivor-steal-btn">훔치기</button>
-    <button id="survivor-pvp-btn">PVP 신청</button>
+  
   </div>
 
   <p id="survivor-detail-message"></p>
 `;
 
 map.appendChild(survivorDetailPanel);
-
-
-// PVP 설정 조회
-
-async function loadSurvivorPvpSettings() {
-
-  const requestId = ++survivorDetailRequest;
-
-  const { data, error } = await supabaseClient
-    .rpc('get_map_player_pvp');
-
-  if (requestId !== survivorDetailRequest) return;
-
-  if (!selectedSurvivorId) return;
-
-  survivorPvpSettings.clear();
-
-  if (error) {
-
-    console.error('PVP 정보 조회 실패:', error);
-
-    refreshSurvivorDetail();
-
-    return;
-
-  }
-
-  (data || []).forEach(player => {
-
-    survivorPvpSettings.set(
-      player.user_id,
-      player.pvp_enabled
-    );
-
-  });
-
-  refreshSurvivorDetail();
-
-}
 
 
 // 캐릭터 상세창 열기
@@ -4054,13 +3960,9 @@ function showSurvivorDetail(userId) {
 
   selectedSurvivorId = userId;
 
-  survivorPvpSettings.clear();
-
   survivorDetailPanel.style.display = 'block';
 
   refreshSurvivorDetail();
-
-  loadSurvivorPvpSettings();
 
 }
 
@@ -4069,11 +3971,7 @@ function showSurvivorDetail(userId) {
 
 function closeSurvivorDetail() {
 
-  survivorDetailRequest++;
-
   selectedSurvivorId = null;
-
-  survivorPvpSettings.clear();
 
   survivorDetailPanel.style.display = 'none';
 
@@ -4112,14 +4010,6 @@ function refreshSurvivorDetail() {
     self.current_location_id === target.current_location_id
   );
 
-  const targetPvp = survivorPvpSettings.get(
-    target.user_id
-  );
-
-  const selfPvp = survivorPvpSettings.get(
-    mapCurrentUserId
-  );
-
   document.getElementById(
     'survivor-detail-name'
   ).textContent = target.player_name || '이름 미등록';
@@ -4128,19 +4018,6 @@ function refreshSurvivorDetail() {
     'survivor-detail-location'
   ).textContent = location?.name || '위치 미확인';
 
-  const pvpText = document.getElementById(
-    'survivor-detail-pvp'
-  );
-
-  pvpText.textContent =
-    targetPvp === true
-      ? 'ENABLED'
-      : targetPvp === false
-        ? 'DISABLED'
-        : 'UNKNOWN';
-
-  pvpText.style.color =
-    targetPvp === true ? '#9dc5ae' : '#998c92';
 
   const statusText = document.getElementById(
     'survivor-detail-status'
@@ -4152,36 +4029,29 @@ function refreshSurvivorDetail() {
   statusText.style.color =
     sameLocation ? '#9dc5ae' : '#bd6b83';
 
+
   document.getElementById(
     'survivor-gift-btn'
   ).disabled = !sameLocation;
+
 
   document.getElementById(
     'survivor-steal-btn'
   ).disabled = !sameLocation;
 
-  document.getElementById(
-    'survivor-pvp-btn'
-  ).disabled = !(
-    sameLocation &&
-    targetPvp === true &&
-    selfPvp === true
-  );
 
   document.getElementById(
     'survivor-detail-message'
-  ).textContent = !sameLocation
-    ? '같은 장소에 있어야 상호작용할 수 있습니다.'
-    : targetPvp === undefined || selfPvp === undefined
-      ? 'PVP 설정을 확인하는 중입니다.'
-      : !targetPvp || !selfPvp
-        ? 'PVP에 동의한 캐릭터끼리만 전투 신청이 가능합니다.'
-        : '상호작용 대상을 선택했습니다.';
+  ).textContent = sameLocation
+
+    ? '상호작용 대상을 선택했습니다.'
+
+    : '같은 장소에 있어야 상호작용할 수 있습니다.';
+
 
   updateSurvivorDetailPosition();
 
 }
-
 
 // 지도 위 상세창 위치 조정
 
@@ -4335,13 +4205,7 @@ document.getElementById(
 
 });
 
-document.getElementById(
-  'survivor-pvp-btn'
-).addEventListener('click', () => {
 
-  alert('PVP 신청 기능은 준비 중입니다.');
-
-});
 function renderMapPlayers() {
 
   mapPlayerLayer.innerHTML = '';
@@ -6999,8 +6863,7 @@ authSubmit.onclick = async () => {
     const will =
   document.getElementById('player-will').value;
 
-const pvpEnabled =
-  document.getElementById('signup-pvp-enabled').checked;
+
 
       if (
         health < 0 || health > 100 ||
@@ -7046,7 +6909,7 @@ p_hunger: hunger,
 p_item1: item1,
 p_item2: item2,
 p_will: will,
-p_pvp_enabled: pvpEnabled
+p_pvp_enabled: false
         }
       );
 
@@ -10604,7 +10467,7 @@ async function loadAdminUsers() {
 
   const { data, error } = await supabaseClient
     .from('profiles')
-  .select('user_id, email, player_name, status, created_at, pvp_enabled')
+.select('user_id, email, player_name, status, created_at')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -10649,25 +10512,7 @@ async function loadAdminUsers() {
 
    info.append(email, status);
 
-// PVP 동의 상태 표시
-if (player.email.toLowerCase() !== ADMIN_EMAIL) {
 
-  const pvpStatus = document.createElement('div');
-
-  pvpStatus.textContent = player.pvp_enabled
-    ? 'PVP : ENABLED / 동의'
-    : 'PVP : DISABLED / 비동의';
-
-  pvpStatus.style.cssText = `
-    font-size:11px;
-    margin-top:5px;
-    font-weight:bold;
-    color:${player.pvp_enabled ? '#9dc5ae' : '#998c92'};
-  `;
-
-  info.appendChild(pvpStatus);
-
-}
 
 row.appendChild(info);
 
@@ -10744,36 +10589,8 @@ deleteBtn.onclick = () => {
     player.player_name || '이름 미등록'
   );
 };
-// PVP 동의 여부 변경 버튼
+buttons.append(approve, reject, deleteBtn);
 
-const pvpBtn = document.createElement('button');
-
-pvpBtn.textContent = player.pvp_enabled
-  ? 'PVP ON'
-  : 'PVP OFF';
-
-pvpBtn.style.background = player.pvp_enabled
-  ? '#36594b'
-  : '#211a1e';
-
-pvpBtn.style.color = player.pvp_enabled
-  ? '#b5dfc5'
-  : '#998c92';
-
-pvpBtn.style.border = player.pvp_enabled
-  ? '1px solid #789184'
-  : '1px solid #49303a';
-
-pvpBtn.style.marginLeft = '6px';
-pvpBtn.style.fontWeight = 'bold';
-
-pvpBtn.onclick = () => changePlayerPvp(
-  player.user_id,
-  player.player_name || '이름 미등록',
-  player.pvp_enabled
-);
-
-buttons.append(approve, reject, pvpBtn, deleteBtn);
       row.appendChild(buttons);
     }
 
@@ -10811,52 +10628,7 @@ async function deletePlayer(userId, playerName) {
     alert('삭제 실패: ' + error.message);
   }
 }
-  // 관리자 PVP 동의 여부 변경
 
-async function changePlayerPvp(
-  userId,
-  playerName,
-  currentPvp
-) {
-
-  const nextPvp = !currentPvp;
-
-  const confirmed = confirm(
-    `${playerName} 캐릭터의 PVP 설정을 변경하시겠습니까?\n\n` +
-    `현재 상태 : ${currentPvp ? '동의' : '비동의'}\n` +
-    `변경 상태 : ${nextPvp ? '동의' : '비동의'}`
-  );
-
-  if (!confirmed) return;
-
-  const { data, error } = await supabaseClient
-    .from('profiles')
-    .update({
-      pvp_enabled: nextPvp
-    })
-    .eq('user_id', userId)
-    .select('user_id, pvp_enabled')
-    .single();
-
-  if (error || !data) {
-
-    alert(
-      'PVP 설정 변경 실패: ' +
-      (error?.message || '변경된 캐릭터가 없습니다.')
-    );
-
-    return;
-
-  }
-
-  alert(
-    `${playerName} 캐릭터의 PVP 설정이 ` +
-    `${data.pvp_enabled ? '동의' : '비동의'} 상태로 변경되었습니다.`
-  );
-
-  await loadAdminUsers();
-
-}
 async function changePlayerStatus(userId, status) {
   const action = status === 'approved' ? '승인' : '거절';
 
