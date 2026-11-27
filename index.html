@@ -4672,11 +4672,10 @@ async function loadUnreadExploreResult() {
 
     const user = sessionData.session?.user;
 
-    if (
-      requestId !== exploreResultRequest ||
-      !user ||
-      (user.email || '').toLowerCase() === ADMIN_EMAIL
-    ) return;
+   if (
+  requestId !== exploreResultRequest ||
+  !user
+) return;
 
 
     const { data, error } = await supabaseClient
@@ -5686,10 +5685,7 @@ async function loadUnreadStealAlert() {
 
     if (requestId !== stealAlertRequest) return;
 
-    if (
-      !user ||
-      (user.email || '').toLowerCase() === ADMIN_EMAIL
-    ) return;
+  if (!user) return;
 
 
     const { data, error } =
@@ -5861,11 +5857,7 @@ await loadMapPlayers();
       const user = sessionData.session?.user;
 
 
-      if (
-        user &&
-        (user.email || '').toLowerCase() !== ADMIN_EMAIL
-      ) {
-
+  if (user) {
         await Promise.all([
 
           refreshPlayerStats(),
@@ -7082,10 +7074,7 @@ async function refreshPlayerStats() {
 
   const user = sessionData.session?.user;
 
-  if (
-    !user ||
-    (user.email || '').toLowerCase() === ADMIN_EMAIL
-  ) return;
+if (!user) return;
 
 
   const { data, error } = await supabaseClient
@@ -8277,9 +8266,10 @@ async function loadAdminInventoryPlayers() {
 
   const { data, error } = await supabaseClient
     .from('profiles')
-    .select('user_id, player_name, email')
-    .eq('approved', true)
-    .eq('status', 'approved')
+ .select('user_id, player_name, email')
+.eq('approved', true)
+.eq('status', 'approved')
+.eq('signup_completed', true)
     .order('player_name', { ascending: true });
 
   if (error) {
@@ -8556,9 +8546,10 @@ async function loadAdminStatPlayers() {
 
   const { data, error } = await supabaseClient
     .from('profiles')
-    .select('user_id, player_name, email')
-    .eq('approved', true)
-    .eq('status', 'approved')
+   .select('user_id, player_name, email')
+.eq('approved', true)
+.eq('status', 'approved')
+.eq('signup_completed', true)
     .order('player_name', { ascending: true });
 
   if (error) {
@@ -8569,9 +8560,7 @@ async function loadAdminStatPlayers() {
 
   data.forEach(player => {
 
-    if (player.email?.toLowerCase() === ADMIN_EMAIL) {
-      return;
-    }
+
 
     const option = document.createElement('option');
 
