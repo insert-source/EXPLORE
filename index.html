@@ -893,6 +893,36 @@ top: 0;
   color: #bcaab2;
   margin-bottom: 0;
 }
+  /* 플레이어 현재 위치 표시 */
+
+.player-map-position {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transform: translate(-50%, 0);
+  pointer-events: none;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.player-position-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #9dc5ae;
+  box-shadow: 0 0 8px #789184;
+}
+
+.player-position-label {
+  color: #9dc5ae;
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 1.5px;
+  text-shadow: 0 0 5px #141114;
+}
 </style>
 </head>
 
@@ -2112,6 +2142,101 @@ map.appendChild(mapLocationLayer);
 
 
 // 지도 화면 갱신
+  // ========================================
+// 플레이어 현재 위치 표시
+// ========================================
+
+let playerMovement = null;
+let playerMovementRequest = 0;
+
+const playerMapPosition =
+  document.createElement('div');
+
+playerMapPosition.className = 'player-map-position';
+
+playerMapPosition.innerHTML = `
+  <span class="player-position-dot"></span>
+  <span class="player-position-label">YOU</span>
+`;
+
+playerMapPosition.style.display = 'none';
+
+map.appendChild(playerMapPosition);
+
+
+// 현재 위치 표시 및 좌표 계산
+
+function updatePlayerMapPosition() {
+
+  playerMapPosition.style.display = 'none';
+
+  if (!playerMovement?.current_location_id) return;
+
+  const location = mapLocations.find(
+    location =>
+      location.id === playerMovement.current_location_id
+  );
+
+  if (!location) return;
+
+  const size = 50 * scale;
+
+  const positionX = x + location.x * size;
+  const positionY = y + location.y * size;
+
+  playerMapPosition.style.left =
+    `${positionX}px`;
+
+  playerMapPosition.style.top =
+    `${positionY + 30}px`;
+
+  playerMapPosition.style.display = 'flex';
+
+}
+
+
+// 플레이어 현재 위치 조회
+
+async function loadPlayerMovement() {
+
+  const requestId = ++playerMovementRequest;
+
+  playerMovement = null;
+
+  updatePlayerMapPosition();
+
+  const { data: sessionData } =
+    await supabaseClient.auth.getSession();
+
+  const user = sessionData.session?.user;
+
+  if (!user || requestId !== playerMovementRequest) return;
+
+  // 관리자 위치는 표시하지 않음
+
+  if ((user.email || '').toLowerCase() === ADMIN_EMAIL) return;
+
+  const { data, error } = await supabaseClient
+    .from('player_movement')
+    .select('*')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (requestId !== playerMovementRequest) return;
+
+  if (error) {
+
+    console.error('플레이어 위치 조회 실패:', error);
+
+    return;
+
+  }
+
+  playerMovement = data || null;
+
+  updatePlayerMapPosition();
+
+}
 function updateMap() {
 
   const size = 50 * scale;
@@ -2122,12 +2247,13 @@ function updateMap() {
   coordinates.textContent =
     `X : ${Math.round(-x / size)} / Y : ${Math.round(-y / size)} / ZOOM : ${Math.round(scale * 100)}%`;
 
-    updateMapLocationPositions();
+      updateMapLocationPositions();
 
   updateLocationDetailPosition();
 
-}
+  updatePlayerMapPosition();
 
+}
 // 장소 아이콘 위치 갱신
 function updateMapLocationPositions() {
 
@@ -2186,6 +2312,8 @@ async function loadMapLocations() {
   mapLocations = data || [];
 
   renderMapLocations();
+
+  await loadPlayerMovement();
 
 }
 
@@ -5089,6 +5217,13 @@ locationAdminPanel.style.display = 'none';
 playerLocationAdminPanel.style.display = 'none';
 cancelLocationPicking(false);
   closeLocationDetail();
+  // 이전 플레이어 위치 정보 초기화
+
+playerMovementRequest++;
+
+playerMovement = null;
+
+updatePlayerMapPosition();
   if (!user) {
     document.getElementById('user-status').textContent = 'GUEST';
     loginOpen.style.display = 'inline-block';
