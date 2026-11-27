@@ -3125,6 +3125,70 @@ label[for="admin-location-travel"] {
 #location-detail-mental-loss {
   color: #a99ac8;
 }
+  /* 관리자 아이템 압축형 목록 */
+
+#admin-item-list {
+  max-height: 320px;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #653448 #171416;
+}
+
+.admin-item-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.admin-item-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #302129;
+  color: #d88ca3;
+  padding: 9px 5px;
+  white-space: nowrap;
+}
+
+.admin-item-table td {
+  padding: 6px 5px;
+  text-align: center;
+  border-bottom: 1px solid #49303a;
+}
+
+.admin-item-table tr:hover td {
+  background: #30252a;
+}
+
+.admin-item-table .item-name-cell {
+  text-align: left;
+  color: #e8e1e4;
+  font-weight: bold;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.admin-item-table .item-name-cell:hover {
+  color: #d88ca3;
+}
+
+.admin-item-table button {
+  padding: 4px 7px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.admin-item-table .item-positive {
+  color: #9dc5ae;
+}
+
+.admin-item-table .item-negative {
+  color: #e57373;
+}
+
+.admin-item-table .item-zero {
+  color: #776970;
+}
 </style>
 </head>
 
@@ -3945,7 +4009,35 @@ label[for="admin-location-travel"] {
     <!-- 등록된 아이템 목록 -->
     <section class="widget">
       <div class="widget-title">ITEM LIST</div>
+<div style="display:flex; gap:8px; margin-bottom:10px;">
 
+  <input
+    type="text"
+    id="admin-item-search"
+    placeholder="아이템 이름 또는 설명 검색"
+    style="flex:1; min-width:0;"
+  >
+
+  <select
+    id="admin-item-sort"
+    style="
+      background:#171416;
+      color:#e8e1e4;
+      border:1px solid #49303a;
+      padding:8px;
+      border-radius:4px;
+    "
+  >
+    <option value="name">가나다순</option>
+    <option value="newest">최신 등록순</option>
+    <option value="oldest">오래된 등록순</option>
+  </select>
+
+</div>
+
+<div id="admin-item-count"
+     style="font-size:11px; color:#998c92; margin-bottom:10px;">
+</div>
       <div id="admin-item-list">
         등록된 아이템 목록
       </div>
@@ -11973,7 +12065,11 @@ async function saveAdminItemDrops() {
 itemDropSave.onclick = saveAdminItemDrops;
 
 // 전체 아이템 목록 불러오기
+
+let adminItemCache = [];
+
 async function loadAdminItems() {
+
   const list = document.getElementById('admin-item-list');
   const select = document.getElementById('admin-inventory-item');
 
@@ -11985,76 +12081,150 @@ async function loadAdminItems() {
     .order('name', { ascending: true });
 
   if (error) {
+    adminItemCache = [];
     list.textContent = '조회 실패: ' + error.message;
-    select.innerHTML = '';
+    select.replaceChildren();
     return;
   }
 
-  list.innerHTML = '';
-  select.innerHTML = '';
+  adminItemCache = data;
 
-  if (!data.length) {
-    list.textContent = '등록된 아이템이 없습니다.';
-    return;
-  }
+  select.replaceChildren();
 
   data.forEach(item => {
-    const row = document.createElement('div');
 
-    row.style.cssText = `
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      padding:10px;
-      margin-top:6px;
-      background:#171416;
-      border:1px solid #49303a;
-      border-radius:5px;
-    `;
-
-    const info = document.createElement('div');
-
-    const name = document.createElement('div');
-    name.textContent = item.name;
-    name.style.color = '#eeeeee';
-
-    const status = document.createElement('div');
-    status.style.fontSize = '11px';
-    status.style.color = '#998c92';
-
-    status.textContent =
-      (item.usable ? '사용 가능' : '사용 불가') +
-      ' / ' +
-      (item.consumable ? '소모품' : '비소모품');
-
-    info.append(name, status);
-
-    const buttons = document.createElement('div');
-    buttons.style.display = 'flex';
-    buttons.style.gap = '6px';
-
-    const editBtn = document.createElement('button');
-    editBtn.textContent = '수정';
-    editBtn.onclick = () => editAdminItem(item);
-
-    const deleteBtn = document.createElement('button');
-    deleteBtn.textContent = '삭제';
-    deleteBtn.style.background = '#6e263d';
-    deleteBtn.style.color = '#ffffff';
-    deleteBtn.onclick = () => deleteAdminItem(item);
-
-    buttons.append(editBtn, deleteBtn);
-    row.append(info, buttons);
-    list.appendChild(row);
-
-    // 지급 및 회수용 아이템 선택 목록
     const option = document.createElement('option');
+
     option.value = item.id;
     option.textContent = item.name;
 
     select.appendChild(option);
+
   });
+
+  renderAdminItemTable();
+
+}
+
+document.getElementById(
+  'admin-item-search'
+).addEventListener('input', renderAdminItemTable);
+
+document.getElementById(
+  'admin-item-sort'
+).addEventListener('change', renderAdminItemTable);
+function renderAdminItemTable() {
+
+  const list = document.getElementById('admin-item-list');
+
+  list.replaceChildren();
+
+  const table = document.createElement('table');
+
+  table.className = 'admin-item-table';
+
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>이름</th>
+        <th>체력</th>
+        <th>정신력</th>
+        <th>허기</th>
+        <th>사용</th>
+        <th>소모</th>
+        <th>관리</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  `;
+
+  const body = table.querySelector('tbody');
+
+const keyword = document.getElementById(
+  'admin-item-search'
+).value.trim().toLowerCase();
+
+const sort = document.getElementById(
+  'admin-item-sort'
+).value;
+
+const filteredItems = adminItemCache.filter(item =>
+  item.name.toLowerCase().includes(keyword) ||
+  (item.description || '').toLowerCase().includes(keyword)
+);
+
+filteredItems.sort((a, b) => {
+
+  if (sort === 'newest') {
+    return new Date(b.created_at) - new Date(a.created_at);
+  }
+
+  if (sort === 'oldest') {
+    return new Date(a.created_at) - new Date(b.created_at);
+  }
+
+  return a.name.localeCompare(b.name, 'ko');
+
+});
+
+filteredItems.forEach(item => {
+
+    const row = document.createElement('tr');
+
+    const name = row.insertCell();
+
+    name.className = 'item-name-cell';
+    name.textContent = item.name;
+    name.title = item.description || '';
+    name.onclick = () => editAdminItem(item);
+
+    [
+      item.health_effect,
+      item.mental_effect,
+      item.hunger_effect
+    ].forEach(value => {
+
+      const cell = row.insertCell();
+
+      cell.textContent = value > 0 ? '+' + value : value;
+
+      cell.className = value > 0
+        ? 'item-positive'
+        : value < 0
+          ? 'item-negative'
+          : 'item-zero';
+
+    });
+
+    row.insertCell().textContent = item.usable ? 'O' : 'X';
+
+    row.insertCell().textContent = item.consumable ? 'O' : 'X';
+
+    const actions = row.insertCell();
+
+    const editBtn = document.createElement('button');
+
+    editBtn.textContent = '수정';
+    editBtn.onclick = () => editAdminItem(item);
+
+    const deleteBtn = document.createElement('button');
+
+    deleteBtn.textContent = '삭제';
+    deleteBtn.style.background = '#6e263d';
+    deleteBtn.style.marginLeft = '4px';
+    deleteBtn.onclick = () => deleteAdminItem(item);
+
+    actions.append(editBtn, deleteBtn);
+
+    body.appendChild(row);
+
+  });
+
+  list.appendChild(table);
+
+  document.getElementById('admin-item-count').textContent =
+`전체 ${adminItemCache.length}개 / 검색 결과 ${filteredItems.length}개`;
+
 }
   // 기존 아이템 수정
 function editAdminItem(item) {
