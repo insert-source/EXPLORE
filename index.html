@@ -962,29 +962,39 @@ if (result.error) throw result.error;
   }
 };
 // 플레이어 정보 화면에 표시
+  // 능력치 위험 수준별 색상
+function getStatColor(value) {
+  if (value <= 5) return '#9b304d';
+  return '#789184';
+}
+
+// 능력치 수치 및 색상 업데이트
+function updatePlayerStat(type, value) {
+  const display = document.getElementById(`display-${type}`);
+  const fill = document.getElementById(`${type}-fill`);
+
+  const color = getStatColor(value);
+
+  display.textContent = `${value} / 100`;
+  display.style.color = color;
+
+  fill.style.width = `${value}%`;
+  fill.style.backgroundColor = color;
+}
 function renderPlayerProfile(profile) {
 
   // 플레이어 이름
   document.getElementById('display-player-name').textContent =
     profile.player_name;
 
-  // 체력
-  document.getElementById('display-health').textContent =
-    `${profile.health} / 100`;
-  document.getElementById('health-fill').style.width =
-    `${profile.health}%`;
+// 체력
+updatePlayerStat('health', profile.health);
 
-  // 정신력
-  document.getElementById('display-mental').textContent =
-    `${profile.mental} / 100`;
-  document.getElementById('mental-fill').style.width =
-    `${profile.mental}%`;
+// 정신력
+updatePlayerStat('mental', profile.mental);
 
-  // 허기
-  document.getElementById('display-hunger').textContent =
-    `${profile.hunger} / 100`;
-  document.getElementById('hunger-fill').style.width =
-    `${profile.hunger}%`;
+// 허기
+updatePlayerStat('hunger', profile.hunger);
   // 유서 표시
   document.getElementById('player-will-display').value =
     profile.will || '';
