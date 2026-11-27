@@ -3534,13 +3534,13 @@ label[for="admin-location-travel"] {
 
       <span>
         배분
-        <span id="signup-point-used">0</span>
+  <span id="signup-point-used">15</span>
         / 100
       </span>
 
       <span>
         잔여
-        <span id="signup-point-remaining">100</span>
+   <span id="signup-point-remaining">85</span>
       </span>
 
     </div>
@@ -3560,7 +3560,7 @@ label[for="admin-location-travel"] {
 
       <span class="signup-stat-value is-low"
             id="signup-health-display">
-        <span id="signup-health-value">0</span> / 100
+        <span id="signup-health-value">5</span>/ 100
       </span>
 
     </div>
@@ -3602,7 +3602,7 @@ label[for="admin-location-travel"] {
 
       <span class="signup-stat-value is-low"
             id="signup-mental-display">
-        <span id="signup-mental-value">0</span> / 100
+       <span id="signup-mental-value">5</span>/ 100
       </span>
 
     </div>
@@ -3644,7 +3644,7 @@ label[for="admin-location-travel"] {
 
       <span class="signup-stat-value is-low"
             id="signup-hunger-display">
-        <span id="signup-hunger-value">0</span> / 100
+        <span id="signup-hunger-value">5</span>/ 100
       </span>
 
     </div>
@@ -3676,11 +3676,14 @@ label[for="admin-location-travel"] {
 
   <!-- 능력치 배분 안내 -->
 
-  <p class="signup-stat-notice">
-    ※ 각 수치는 5단위로 조절됩니다.<br>
-    ※ 세 능력치의 합계는 100을 초과할 수 없습니다.<br>
-    ※ 체력 또는 허기가 0일 경우 사망 처리됩니다.
-  </p>
+<p class="signup-stat-notice">
+  ※ 각 능력치의 최솟값은 5입니다.<br>
+  ※ 각 수치는 5단위로 조절됩니다.<br>
+  ※ 세 능력치의 합계는 100을 초과할 수 없습니다.<br>
+  ※ 모든 포인트를 반드시 사용할 필요는 없습니다.<br>
+  ※ 게임 진행 중 체력 또는 허기가 0이 되면 사망합니다.<br>
+  ※ 정신력이 0이면 조사를 시작할 수 없습니다.
+</p>
 
 </div>
 
@@ -9875,10 +9878,10 @@ const authSubmit = document.getElementById('auth-submit');
 const authMessage = document.getElementById('auth-message');
 
 let authMode = 'login';
-  const signupStats = {
-  health: 0,
-  mental: 0,
-  hunger: 0
+const signupStats = {
+  health: 5,
+  mental: 5,
+  hunger: 5
 };
 
 // 회원가입 능력치 UI 갱신
@@ -9953,9 +9956,9 @@ function renderSignupStats() {
 
     // 감소 버튼
 
-    document.getElementById(
-      `signup-${type}-minus`
-    ).disabled = value < 5;
+   document.getElementById(
+  `signup-${type}-minus`
+).disabled = value <= 5;
 
 
     // 증가 버튼
@@ -9987,7 +9990,7 @@ function changeSignupStat(type, amount) {
   const next = current + amount;
 
 
-  if (next < 0 || next > 100) return;
+if (next < 5 || next > 100) return;
 
 
   const total =
@@ -10102,13 +10105,13 @@ function openAdminCharacterSetup() {
 
   signupFields.style.display = 'block';
 
-   ['health', 'mental', 'hunger'].forEach(type => {
+ ['health', 'mental', 'hunger'].forEach(type => {
 
-    signupStats[type] = 0;
+  signupStats[type] = 5;
 
-  });
+});
 
-  renderSignupStats();
+renderSignupStats();
   document.getElementById('player-item1').value = '';
   document.getElementById('player-item2').value = '';
   document.getElementById('player-will').value = '';
@@ -10147,16 +10150,63 @@ authSubmit.onclick = async () => {
 
   // 관리자 캐릭터 초기 설정
 
-  if (authMode === 'admin_setup') {
+if (authMode === 'admin_setup') {
 
-    const playerName = authEmail.value.trim();
+  const playerName = authEmail.value.trim();
 
-    if (!playerName) {
-      authMessage.textContent = '캐릭터 이름을 입력해 줘.';
-      return;
-    }
+  if (!playerName) {
+    authMessage.textContent = '캐릭터 이름을 입력해 줘.';
+    return;
+  }
 
-    authSubmit.disabled = true;
+
+  // 관리자 초기 능력치 검증
+
+  const { health, mental, hunger } = signupStats;
+
+
+  if (
+    !Number.isInteger(health) ||
+    !Number.isInteger(mental) ||
+    !Number.isInteger(hunger) ||
+    health < 5 || health > 100 ||
+    mental < 5 || mental > 100 ||
+    hunger < 5 || hunger > 100
+  ) {
+
+    authMessage.textContent =
+      '모든 초기 능력치는 5 이상 100 이하여야 합니다.';
+
+    return;
+
+  }
+
+
+  if (
+    health % 5 !== 0 ||
+    mental % 5 !== 0 ||
+    hunger % 5 !== 0
+  ) {
+
+    authMessage.textContent =
+      '초기 능력치는 5단위로 배분해야 합니다.';
+
+    return;
+
+  }
+
+
+  if (health + mental + hunger > 100) {
+
+    authMessage.textContent =
+      '전체 능력치 합계는 100을 초과할 수 없습니다.';
+
+    return;
+
+  }
+
+
+  authSubmit.disabled = true;
     authMessage.textContent = '등록 중...';
 
     try {
@@ -10261,17 +10311,51 @@ authSubmit.onclick = async () => {
 
 
 
-      if (
-        health < 0 || health > 100 ||
-        mental < 0 || mental > 100 ||
-        hunger < 0 || hunger > 100 ||
-        health + mental + hunger > 100
-      ) {
-        authMessage.textContent = '수치의 합계는 100 이하여야 해.';
-        authSubmit.disabled = false;
-        return;
-      }
+   if (
+  !Number.isInteger(health) ||
+  !Number.isInteger(mental) ||
+  !Number.isInteger(hunger) ||
+  health < 5 || health > 100 ||
+  mental < 5 || mental > 100 ||
+  hunger < 5 || hunger > 100
+) {
 
+  authMessage.textContent =
+    '모든 초기 능력치는 5 이상 100 이하여야 합니다.';
+
+  authSubmit.disabled = false;
+
+  return;
+
+}
+
+
+if (
+  health % 5 !== 0 ||
+  mental % 5 !== 0 ||
+  hunger % 5 !== 0
+) {
+
+  authMessage.textContent =
+    '초기 능력치는 5단위로 배분해야 합니다.';
+
+  authSubmit.disabled = false;
+
+  return;
+
+}
+
+
+if (health + mental + hunger > 100) {
+
+  authMessage.textContent =
+    '전체 능력치 합계는 100을 초과할 수 없습니다.';
+
+  authSubmit.disabled = false;
+
+  return;
+
+}
      // 이메일 발송 없이 서버에서 계정 생성
 const { data: createdPlayer, error: createError } =
   await supabaseClient.functions.invoke('create-player', {
