@@ -3664,6 +3664,12 @@ label[for="admin-location-travel"] {
 
     </div>
 
+    <div class="explore-result-section" id="explore-result-passive-section"
+         style="display:none; color:#8fffd5; border:1px solid #367b66; padding:12px; margin:12px 0;">
+      <div class="explore-result-section-title" style="color:inherit;">PASSIVE EFFECT · 특수효과 발동</div>
+      <div id="explore-result-passive-list"></div>
+    </div>
+
  <div class="explore-result-return"
      id="explore-result-return">
   거점으로 복귀했습니다.
@@ -7314,6 +7320,22 @@ console.log('사망 여부 판정:', causedDeath);
       ? 'block'
       : 'none';
 
+
+  const passiveSection = document.getElementById('explore-result-passive-section');
+  const passiveList = document.getElementById('explore-result-passive-list');
+  passiveList.replaceChildren();
+  const activations = Array.isArray(result.passive_activations) ? result.passive_activations : [];
+  for (const activation of activations) {
+    if (!activation || !['health', 'mental'].includes(activation.stat)) continue;
+    const amount = Number(activation.prevented);
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    const row = document.createElement('div');
+    const stat = activation.stat === 'health' ? '체력' : '정신력';
+    row.textContent = `${activation.item_name} · ${stat} 피해 ${amount} 방지`;
+    row.style.marginTop = '6px';
+    passiveList.appendChild(row);
+  }
+  passiveSection.style.display = passiveList.children.length ? 'block' : 'none';
 
   exploreResultMessage.textContent = '';
 
