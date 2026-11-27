@@ -1109,7 +1109,7 @@ async function loadAdminUsers() {
 
   const { data, error } = await supabaseClient
     .from('profiles')
-    .select('user_id, email, status, created_at')
+   .select('user_id, email, player_name, status, created_at')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -1143,7 +1143,9 @@ async function loadAdminUsers() {
     const info = document.createElement('div');
 
     const email = document.createElement('div');
-    email.textContent = player.email;
+   email.textContent = player.email.toLowerCase() === ADMIN_EMAIL
+  ? '관리자'
+  : (player.player_name || '이름 미등록');
     email.style.color = '#eee';
 
     const status = document.createElement('div');
