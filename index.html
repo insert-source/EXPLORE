@@ -1422,6 +1422,15 @@ top: 0;
   font-size: 11px;
   line-height: 1.8;
 }
+  /* 기존 이동 시간 입력란 숨기기 */
+
+label[for="admin-location-travel"] {
+  display: none !important;
+}
+
+#admin-location-travel {
+  display: none !important;
+}
 </style>
 </head>
 
@@ -6037,12 +6046,13 @@ async function loadAdminLocations() {
     // 장소 이름
     const name = document.createElement('div');
 
-    name.textContent =
-      `${location.is_visible ? '◆' : '◇'} ${location.name}`;
+   name.textContent = location.is_base
+  ? `⬢ BASE / ${location.name}`
+  : `${location.is_visible ? '◆' : '◇'} ${location.name}`;
 
-    name.style.color =
-      dangerColors[location.danger_level];
-
+name.style.color = location.is_base
+  ? '#9dc5ae'
+  : dangerColors[location.danger_level];
     name.style.fontWeight = 'bold';
 
 
@@ -6061,9 +6071,8 @@ async function loadAdminLocations() {
 
     time.className = 'admin-location-meta';
 
-    time.textContent =
-      `이동 ${location.travel_minutes}분` +
-      ` / 조사 ${location.explore_minutes}분`;
+   time.textContent =
+  `조사 ${location.explore_minutes}분`;
 
     info.append(name, meta, time);
 
@@ -6090,6 +6099,15 @@ async function loadAdminLocations() {
     const deleteBtn = document.createElement('button');
 
     deleteBtn.textContent = '삭제';
+    if (location.is_base) {
+
+  deleteBtn.disabled = true;
+
+  deleteBtn.style.opacity = '0.3';
+
+  deleteBtn.title = '현재 거점은 삭제할 수 없습니다.';
+
+}
 
     deleteBtn.style.background = '#6e263d';
     deleteBtn.style.color = '#ffffff';
