@@ -4733,10 +4733,7 @@ max-width:calc(100vw - 30px);
                  value="10">
 
         </div>
-        <div class="admin-location-field">
-          <label for="admin-location-item-drop-chance">아이템 획득 확률 (%)</label>
-          <input type="number" id="admin-location-item-drop-chance" min="0" max="100" step="1" value="0">
-        </div>
+      
 
       </div>
 
@@ -5016,11 +5013,21 @@ max-width:calc(100vw - 30px);
 </details>
 <!-- 장소별 아이템 획득 확률 요약 -->
 
-<details class="location-loss-settings location-extra"><summary>아이템 획득 정보</summary>
+<details class="location-loss-settings location-extra">
+  <summary>아이템 획득 정보</summary>
 
-  <p class="location-section-notice">
-    출현 장소는 아이템 관리창에서 수정할 수 있습니다.
-  </p>
+  <div class="admin-location-field" style="margin-top:12px;">
+    <label for="admin-location-item-drop-chance">
+      아이템 획득 확률 (%)
+    </label>
+
+    <input type="number"
+           id="admin-location-item-drop-chance"
+           min="0"
+           max="100"
+           step="1"
+           value="0">
+  </div>
 
   <div id="admin-location-drop-summary">
     등록된 장소를 선택해 주세요.
@@ -13380,10 +13387,7 @@ async function loadLocationDropSummary(locationId) {
     if (location.error) throw location.error;
     if (drops.error) throw drops.error;
     locationDropSummary.replaceChildren();
-    const summary = document.createElement('div');
-    summary.className = 'location-drop-summary-total';
-    summary.textContent = `아이템 획득 확률: ${location.data.item_drop_chance}%`;
-    locationDropSummary.append(summary);
+  
     const items = (drops.data || []).sort((a,b) => (a.items?.name || '').localeCompare(b.items?.name || '', 'ko'));
     const title = document.createElement('div');
     title.className = 'location-section-notice';
