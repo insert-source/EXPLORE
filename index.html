@@ -3451,7 +3451,28 @@ label[for="admin-location-travel"] {
     <div class="explore-result-divider"></div>
 
     <div id="explore-result-narrative"></div>
+<div
+  id="explore-result-secret-section"
+  style="
+    display:none;
+    margin:12px 0;
+    padding:12px;
+    border:1px solid #8c5265;
+    background:#21151c;
+  "
+>
 
+  <div style="
+    color:#d88ca3;
+    font-weight:bold;
+    margin-bottom:8px;
+  ">
+    SECRET LOCATION DISCOVERED
+  </div>
+
+  <div id="explore-result-secret-list"></div>
+
+</div>
     <div class="explore-result-section">
 
       <div class="explore-result-section-title">
@@ -4574,7 +4595,77 @@ label[for="admin-location-travel"] {
 
 </div>
 
+<!-- 비밀 장소 발견 조건 관리 -->
 
+<div class="location-loss-settings">
+
+  <div class="widget-title">
+    SECRET DISCOVERY
+  </div>
+
+  <p class="location-section-notice">
+    현재 장소의 조사 완료 시 발견할 수 있는
+    비밀 장소를 설정합니다.
+  </p>
+
+  <div id="admin-secret-rule-list">
+    등록된 장소를 선택해 주세요.
+  </div>
+
+  <div class="admin-location-field">
+
+    <label>발견 대상 장소</label>
+
+    <select id="admin-secret-target" disabled>
+      <option value="">비밀 장소 선택</option>
+    </select>
+
+  </div>
+
+  <div class="admin-location-field">
+
+    <label>발견 확률 (%)</label>
+
+    <input
+      type="number"
+      id="admin-secret-chance"
+      min="0"
+      max="100"
+      step="1"
+      value="10"
+      disabled
+    >
+
+  </div>
+
+  <div class="admin-location-field">
+
+    <label>발견 지문</label>
+
+    <textarea
+      id="admin-secret-text"
+      rows="4"
+      placeholder="비밀 장소 발견 시 출력할 지문"
+      disabled
+    ></textarea>
+
+  </div>
+
+  <button
+    type="button"
+    id="admin-secret-add"
+    disabled
+    style="width:100%;"
+  >
+    발견 조건 추가
+  </button>
+
+  <p
+    id="admin-secret-message"
+    style="color:#d88ca3;font-size:11px;"
+  ></p>
+
+</div>
 <!-- 장소별 아이템 획득 확률 요약 -->
 
 <div class="location-loss-settings">
@@ -4610,7 +4701,19 @@ label[for="admin-location-travel"] {
         플레이어에게 공개
 
       </label>
+<label style="
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12px;
+  color:#d8cbd0;
+  margin:15px 0;
+">
+  <input type="checkbox"
+         id="admin-location-secret">
 
+  비밀 장소 (발견 후 조사 가능)
+</label>
 
       <!-- 저장 버튼 -->
 
@@ -6858,7 +6961,44 @@ console.log('사망 여부 판정:', causedDeath);
     'explore-result-narrative'
   ).textContent = result.narrative;
 
+  // 비밀 장소 발견 결과
 
+  const secretSection = document.getElementById(
+    'explore-result-secret-section'
+  );
+
+  const secretList = document.getElementById(
+    'explore-result-secret-list'
+  );
+
+  const discoveries = Array.isArray(
+    result.secret_discoveries
+  ) ? result.secret_discoveries : [];
+
+  secretList.replaceChildren();
+
+  secretSection.style.display =
+    discoveries.length > 0 ? 'block' : 'none';
+
+  discoveries.forEach(discovery => {
+
+    const title = document.createElement('div');
+
+    title.textContent = `◆ ${discovery.location_name}`;
+    title.style.color = '#d88ca3';
+    title.style.fontWeight = 'bold';
+
+    const narrative = document.createElement('div');
+
+    narrative.textContent =
+      discovery.discovery_text || '새로운 비밀 장소를 발견했습니다.';
+
+    narrative.style.whiteSpace = 'pre-wrap';
+    narrative.style.margin = '6px 0 12px';
+
+    secretList.append(title, narrative);
+
+  });
   // 획득 아이템
 
   const itemBox = document.getElementById(
@@ -13292,11 +13432,281 @@ name.style.color = location.is_base
 
 
 // 새 장소 입력 초기화
+  function resetSecretRules() {
+
+  document.getElementById(
+    'admin-secret-rule-list'
+  ).textContent = '등록된 장소를 선택해 주세요.';
+
+  document.getElementById(
+    'admin-secret-target'
+  ).replaceChildren(
+    new Option('비밀 장소 선택', '')
+  );
+
+  document.getElementById(
+    'admin-secret-chance'
+  ).value = 10;
+
+  document.getElementById(
+    'admin-secret-text'
+  ).value = '';
+
+  document.getElementById(
+    'admin-secret-message'
+  ).textContent = '';
+
+  ['target', 'chance', 'text', 'add'].forEach(key => {
+    document.getElementById(
+      `admin-secret-${key}`
+    ).disabled = true;
+  });
+
+}
+
+document.getElementById(
+  'admin-secret-add'
+).addEventListener('click', async () => {
+
+  const sourceId = editingLocationId;
+
+  const targetId = document.getElementById(
+    'admin-secret-target'
+  ).value;
+
+  const chance = Number(
+    document.getElementById('admin-secret-chance').value
+  );
+
+  const text = document.getElementById(
+    'admin-secret-text'
+  ).value.trim();
+
+  const message = document.getElementById(
+    'admin-secret-message'
+  );
+
+  const button = document.getElementById(
+    'admin-secret-add'
+  );
+
+  if (!sourceId || !targetId) {
+    message.textContent = '발견 대상 장소를 선택해 주세요.';
+    return;
+  }
+
+  if (
+    !Number.isInteger(chance) ||
+    chance < 0 ||
+    chance > 100
+  ) {
+    message.textContent = '확률은 0~100 사이의 정수여야 합니다.';
+    return;
+  }
+
+  button.disabled = true;
+
+  const { error } = await supabaseClient
+    .from('location_secret_discoveries')
+    .insert({
+      source_location_id: sourceId,
+      secret_location_id: targetId,
+      discovery_chance: chance,
+      discovery_text: text
+    });
+
+  if (editingLocationId !== sourceId) return;
+
+  if (error) {
+    message.textContent = error.message;
+    button.disabled = false;
+    return;
+  }
+
+  await loadSecretRules(sourceId);
+
+  if (editingLocationId === sourceId) {
+    message.textContent = '발견 조건이 등록되었습니다.';
+  }
+
+});
+async function loadSecretRules(locationId) {
+
+  resetSecretRules();
+
+  const [locations, rules] = await Promise.all([
+
+    supabaseClient
+      .from('map_locations')
+      .select('id, name')
+      .eq('is_secret', true)
+      .neq('id', locationId)
+      .order('name'),
+
+    supabaseClient
+      .from('location_secret_discoveries')
+      .select('*')
+      .eq('source_location_id', locationId)
+
+  ]);
+
+  if (editingLocationId !== locationId) return;
+
+  const list = document.getElementById(
+    'admin-secret-rule-list'
+  );
+
+  if (locations.error || rules.error) {
+    list.textContent = '발견 조건 불러오기 실패';
+    return;
+  }
+
+  const target = document.getElementById(
+    'admin-secret-target'
+  );
+
+  const registered = new Set(
+    rules.data.map(rule => rule.secret_location_id)
+  );
+
+  locations.data.forEach(location => {
+
+    if (!registered.has(location.id)) {
+      target.add(new Option(location.name, location.id));
+    }
+
+  });
+
+  list.replaceChildren();
+
+  if (!rules.data.length) {
+    list.textContent = '등록된 발견 조건이 없습니다.';
+  }
+
+  rules.data.forEach(rule => {
+
+    const row = document.createElement('div');
+    row.className = 'location-text-card';
+
+    const name = locations.data.find(
+      location => location.id === rule.secret_location_id
+    )?.name || '비밀 설정이 해제된 장소';
+
+  const title = document.createElement('div');
+
+title.className = 'location-text-number';
+title.textContent = name;
+
+const chanceInput = document.createElement('input');
+
+chanceInput.type = 'number';
+chanceInput.min = 0;
+chanceInput.max = 100;
+chanceInput.step = 1;
+chanceInput.value = rule.discovery_chance;
+
+const textInput = document.createElement('textarea');
+
+textInput.className = 'location-text-content';
+textInput.value = rule.discovery_text || '';
+
+const buttons = document.createElement('div');
+buttons.className = 'location-text-buttons';
+
+const saveBtn = document.createElement('button');
+saveBtn.textContent = '저장';
+saveBtn.className = 'location-text-save';
+
+const deleteBtn = document.createElement('button');
+deleteBtn.textContent = '삭제';
+
+saveBtn.onclick = async () => {
+
+  const chance = Number(chanceInput.value);
+
+  if (
+    chanceInput.value === '' ||
+    !Number.isInteger(chance) ||
+    chance < 0 ||
+    chance > 100
+  ) {
+    alert('확률은 0~100 사이의 정수여야 합니다.');
+    return;
+  }
+
+  saveBtn.disabled = true;
+
+  const { error } = await supabaseClient
+    .from('location_secret_discoveries')
+    .update({
+      discovery_chance: chance,
+      discovery_text: textInput.value.trim()
+    })
+    .eq('id', rule.id);
+
+  if (error) {
+    alert(error.message);
+    saveBtn.disabled = false;
+    return;
+  }
+
+  if (editingLocationId === locationId) {
+    await loadSecretRules(locationId);
+  }
+
+};
+
+deleteBtn.onclick = async () => {
+
+  if (!confirm('이 발견 조건을 삭제하시겠습니까?')) {
+    return;
+  }
+
+  deleteBtn.disabled = true;
+
+  const { error } = await supabaseClient
+    .from('location_secret_discoveries')
+    .delete()
+    .eq('id', rule.id);
+
+  if (error) {
+    alert(error.message);
+    deleteBtn.disabled = false;
+    return;
+  }
+
+  if (editingLocationId === locationId) {
+    await loadSecretRules(locationId);
+  }
+
+};
+
+buttons.append(saveBtn, deleteBtn);
+
+row.append(
+  title,
+  document.createTextNode('발견 확률 (%) '),
+  chanceInput,
+  textInput,
+  buttons
+);
+
+    list.appendChild(row);
+
+  });
+
+  ['target', 'chance', 'text', 'add'].forEach(key => {
+    document.getElementById(
+      `admin-secret-${key}`
+    ).disabled = target.options.length <= 1;
+  });
+
+}
 function resetLocationEditor() {
-
-  editingLocationId = null;
-
-  resetLocationTexts();
+document.getElementById(
+  'admin-location-secret'
+).checked = false;
+  resetSecretRules();
 
   resetLocationDropSummary();
 
@@ -13357,11 +13767,13 @@ function resetLocationEditor() {
 
 // 기존 장소 수정
 function editAdminLocation(location) {
-
+document.getElementById(
+  'admin-location-secret'
+).checked = location.is_secret === true;
   editingLocationId = location.id;
 
   loadLocationTexts(location.id);
-
+  loadSecretRules(location.id);
   loadLocationDropSummary(location.id);
 
   document.getElementById(
@@ -13527,6 +13939,10 @@ mental_loss_max: Number(document.getElementById(
 
 is_visible: document.getElementById(
   'admin-location-visible'
+).checked,
+
+is_secret: document.getElementById(
+  'admin-location-secret'
 ).checked
 
   };
