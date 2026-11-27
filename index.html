@@ -3268,29 +3268,6 @@ label[for="admin-location-travel"] {
 @media (max-width: 1050px) {
   .location-editor-columns { grid-template-columns: minmax(0, 1fr); }
 }
-  /* 아이템 관리창 2열 배치 */
-
-#item-admin-panel .item-admin-columns {
-  display: grid;
-  grid-template-columns: minmax(0, 7fr) minmax(0, 3fr);
-  gap: 16px;
-  align-items: start;
-}
-
-#item-admin-panel .item-admin-left,
-#item-admin-panel .item-admin-right {
-  min-width: 0;
-}
-
-#item-admin-panel .item-admin-right > .widget {
-  margin-top: 0 !important;
-}
-
-@media (max-width: 1050px) {
-  #item-admin-panel .item-admin-columns {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 </style>
 </head>
 
@@ -4114,8 +4091,41 @@ max-width:calc(100vw - 30px);
       <button id="item-admin-close">닫기</button>
     </div>
 
-   <div class="item-admin-columns">
-  <div class="item-admin-left">
+    <!-- 플레이어 아이템 지급 및 회수 -->
+    <section class="widget" style="margin-bottom:12px;">
+      <div class="widget-title">PLAYER INVENTORY</div>
+
+      <div style="
+        display:flex;
+        flex-direction:column;
+        gap:10px;
+        padding:12px;
+      ">
+
+        <label>플레이어</label>
+        <select id="admin-inventory-player"></select>
+
+        <div id="admin-player-inventory"></div>
+
+        <label>아이템</label>
+        <select id="admin-inventory-item"></select>
+
+        <label>수량</label>
+        <input type="number"
+               id="admin-inventory-quantity"
+               min="1"
+               value="1">
+
+        <div style="display:flex;gap:8px;">
+          <button id="admin-item-give">지급</button>
+          <button id="admin-item-remove">회수</button>
+        </div>
+
+        <p id="admin-inventory-message"
+           style="font-size:12px;color:#d88ca3;"></p>
+
+      </div>
+    </section>
 
     <!-- 등록된 아이템 목록 -->
     <section class="widget">
@@ -4276,49 +4286,6 @@ max-width:calc(100vw - 30px);
 
   <p id="admin-item-drop-message"></p>
 
-</div>
-
-   </div>
-
-  <div class="item-admin-right">
-
-    <!-- 플레이어 아이템 지급 및 회수 -->
-    <section class="widget" style="margin-top:12px;">
-      <div class="widget-title">PLAYER INVENTORY</div>
-
-      <div style="
-        display:flex;
-        flex-direction:column;
-        gap:10px;
-        padding:12px;
-      ">
-
-        <label>플레이어</label>
-        <select id="admin-inventory-player"></select>
-
-        <div id="admin-player-inventory"></div>
-
-        <label>아이템</label>
-        <select id="admin-inventory-item"></select>
-
-        <label>수량</label>
-        <input type="number"
-               id="admin-inventory-quantity"
-               min="1"
-               value="1">
-
-        <div style="display:flex;gap:8px;">
-          <button id="admin-item-give">지급</button>
-          <button id="admin-item-remove">회수</button>
-        </div>
-
-      <p id="admin-inventory-message"
-           style="font-size:12px;color:#d88ca3;"></p>
-
-      </div>
-    </section>
-
-  </div>
 </div>
 
   </div>
@@ -4766,7 +4733,7 @@ max-width:calc(100vw - 30px);
                  value="10">
 
         </div>
-      
+
 
       </div>
 
@@ -5046,21 +5013,12 @@ max-width:calc(100vw - 30px);
 </details>
 <!-- 장소별 아이템 획득 확률 요약 -->
 
-<details class="location-loss-settings location-extra">
-  <summary>아이템 획득 정보</summary>
+<details class="location-loss-settings location-extra"><summary>아이템 획득 정보</summary>
 
-  <div class="admin-location-field" style="margin-top:12px;">
-    <label for="admin-location-item-drop-chance">
-      아이템 획득 확률 (%)
-    </label>
-
-    <input type="number"
-           id="admin-location-item-drop-chance"
-           min="0"
-           max="100"
-           step="1"
-           value="0">
-  </div>
+<div class="admin-location-field">
+          <label for="admin-location-item-drop-chance">아이템 획득 확률 (%)</label>
+          <input type="number" id="admin-location-item-drop-chance" min="0" max="100" step="1" value="0">
+        </div>
 
   <div id="admin-location-drop-summary">
     등록된 장소를 선택해 주세요.
@@ -13412,15 +13370,10 @@ async function loadLocationDropSummary(locationId) {
   const requestId = ++locationDropSummaryRequest;
   locationDropSummary.textContent = '획득 정보를 불러오는 중...';
   try {
-    const [location, drops] = await Promise.all([
-      supabaseClient.from('map_locations').select('item_drop_chance').eq('id', locationId).single(),
-      supabaseClient.from('location_item_drops').select('items(name)').eq('location_id', locationId)
-    ]);
+    const drops = await supabaseClient.from('location_item_drops').select('items(name)').eq('location_id', locationId);
     if (requestId !== locationDropSummaryRequest || editingLocationId !== locationId) return;
-    if (location.error) throw location.error;
     if (drops.error) throw drops.error;
     locationDropSummary.replaceChildren();
-  
     const items = (drops.data || []).sort((a,b) => (a.items?.name || '').localeCompare(b.items?.name || '', 'ko'));
     const title = document.createElement('div');
     title.className = 'location-section-notice';
