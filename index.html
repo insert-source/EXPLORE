@@ -9353,7 +9353,7 @@ if (!location.is_base && currentPlayerMental <= 0) {
     '정신력이 부족하여 조사할 수 없습니다.';
   return;
 }
-  }
+
   if (location.is_base) {
 
     message.textContent = '현재 생존자들의 거점입니다.';
@@ -10831,11 +10831,16 @@ async function usePlayerItem(itemId, itemName) {
         .eq('user_id', user.id)
         .single();
 
-    if (!profileError && profile) {
-      updatePlayerStat('health', profile.health);
-      updatePlayerStat('mental', profile.mental);
-      updatePlayerStat('hunger', profile.hunger);
-    } else {
+   if (!profileError && profile) {
+  updatePlayerStat('health', profile.health);
+  updatePlayerStat('mental', profile.mental);
+  updatePlayerStat('hunger', profile.hunger);
+
+  updatePlayerDeathStatus(profile.is_dead);
+  updateLocationActionButtons();
+  updateMovementProgress();
+
+} else {
       console.error('능력치 갱신 실패:', profileError);
     }
 
@@ -14332,7 +14337,7 @@ async function loadAdminUsers() {
 
   const { data, error } = await supabaseClient
     .from('profiles')
-.select('user_id, email, player_name, status, created_at')
+.select('user_id, email, player_name, status, created_at, item1, item2, signup_completed, initial_items_granted')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -14375,7 +14380,42 @@ email.textContent = player.email.toLowerCase() === ADMIN_EMAIL
     status.textContent = '상태: ' + player.status;
     status.style.cssText = 'font-size:12px;color:#bd6b83;margin-top:5px;';
 
-   info.append(email, status);
+const signupStatus = document.createElement('div');
+
+signupStatus.textContent =
+  '캐릭터 등록: ' +
+  (player.signup_completed ? '완료' : '미완료');
+
+signupStatus.style.cssText =
+  'font-size:11px;color:#998c92;margin-top:6px;';
+
+const initialItems = document.createElement('div');
+
+initialItems.textContent =
+  '초기 소지품: ' +
+  (player.item1 || '없음') +
+  ' / ' +
+  (player.item2 || '없음');
+
+initialItems.style.cssText =
+  'font-size:12px;color:#d8cbd0;margin-top:6px;overflow-wrap:anywhere;';
+
+const grantStatus = document.createElement('div');
+
+grantStatus.textContent =
+  '소지품 지급: ' +
+  (player.initial_items_granted ? '완료' : '미지급');
+
+grantStatus.style.cssText =
+  'font-size:11px;color:#789184;margin-top:6px;';
+
+info.append(
+  email,
+  status,
+  signupStatus,
+  initialItems,
+  grantStatus
+);
 
 
 
@@ -14408,6 +14448,13 @@ approve.style.opacity = player.status === 'rejected'
 approve.style.fontWeight = player.status === 'approved'
   ? 'bold'
   : 'normal';
+      approve.disabled =
+  !player.signup_completed ||
+  player.status === 'approved';
+
+if (!player.signup_completed) {
+  approve.title = '초기 캐릭터 등록이 완료되지 않았습니다.';
+}
       approve.onclick = () => changePlayerStatus(
         player.user_id, 'approved'
       );
