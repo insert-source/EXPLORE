@@ -329,6 +329,36 @@ input {
     <input id="auth-password" type="password"
       placeholder="비밀번호"
       style="width:100%;margin-bottom:15px;">
+    <div id="signup-fields" style="display:none;">
+
+  <input id="player-name" type="text"
+    placeholder="플레이어 이름"
+    style="width:100%;margin-bottom:10px;">
+
+  <label>체력</label>
+  <input id="player-health" type="number"
+    min="0" max="100" value="100"
+    style="width:100%;margin-bottom:10px;">
+
+  <label>정신력</label>
+  <input id="player-mental" type="number"
+    min="0" max="100" value="100"
+    style="width:100%;margin-bottom:10px;">
+
+  <label>허기</label>
+  <input id="player-hunger" type="number"
+    min="0" max="100" value="100"
+    style="width:100%;margin-bottom:10px;">
+
+  <input id="player-item1" type="text"
+    placeholder="보유 아이템 1"
+    style="width:100%;margin-bottom:10px;">
+
+  <input id="player-item2" type="text"
+    placeholder="보유 아이템 2"
+    style="width:100%;margin-bottom:15px;">
+
+</div>
 
     <button id="auth-submit" style="width:100%;">로그인</button>
 
