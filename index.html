@@ -491,7 +491,8 @@ input {
     <p style="font-size:12px;color:#998c92;">
       승인이 완료되면 탐험 시스템을 이용할 수 있습니다.
     </p>
-    <button onclick="location.reload()">상태 확인</button>
+<button onclick="location.reload()">상태 확인</button>
+<button id="pending-logout-btn">로그아웃</button>
   </div>
 </div>
 <div class="dashboard">
@@ -800,7 +801,16 @@ async function makePlayerAuthEmail(playerName) {
 
   return `p-${hash.slice(0, 32)}@example.com`;
 }
+document.getElementById('pending-logout-btn').onclick = async () => {
+  const { error } = await supabaseClient.auth.signOut();
 
+  if (error) {
+    alert('로그아웃 실패: ' + error.message);
+    return;
+  }
+
+  location.reload();
+};
 // 회원가입 및 로그인
 authSubmit.onclick = async () => {
   const loginName = authEmail.value.trim();
@@ -866,17 +876,28 @@ authSubmit.onclick = async () => {
         return;
       }
 
-      result = await supabaseClient.auth.signUp({
-        email: authEmailForSupabase,
-        password
-      });
+     // 이메일 발송 없이 서버에서 계정 생성
+const { data: createdPlayer, error: createError } =
+  await supabaseClient.functions.invoke('create-player', {
+    body: {
+      playerName: loginName,
+      password: password
+    }
+  });
 
-      if (result.error) throw result.error;
+if (createError) throw createError;
 
-      if (!result.data.session) {
-        authMessage.textContent = '가입 완료! 이메일 인증 설정을 확인해 줘.';
-        return;
-      }
+if (createdPlayer.error) {
+  throw new Error(createdPlayer.error);
+}
+
+// 생성된 계정으로 자동 로그인
+result = await supabaseClient.auth.signInWithPassword({
+  email: createdPlayer.email,
+  password: password
+});
+
+if (result.error) throw result.error;
 
       const { error: saveError } = await supabaseClient.rpc(
         'save_signup_profile',
