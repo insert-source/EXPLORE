@@ -555,7 +555,8 @@ map.addEventListener("wheel", (e) => {
 updateMap();
 </script>
 <script>
-// 로그인 창 요소
+const ADMIN_EMAIL = 'ssuejjang1@gmail.com';
+
 const authModal = document.getElementById('auth-modal');
 const authTitle = document.getElementById('auth-title');
 const authEmail = document.getElementById('auth-email');
@@ -565,8 +566,12 @@ const authMessage = document.getElementById('auth-message');
 
 let authMode = 'login';
 
-// 로그인 창 열기
-document.getElementById('login-open').onclick = () => {
+const loginOpen = document.getElementById('login-open');
+const signupOpen = document.getElementById('signup-open');
+const logoutBtn = document.getElementById('logout-btn');
+
+// 로그인 창
+loginOpen.onclick = () => {
   authMode = 'login';
   authTitle.textContent = 'LOGIN';
   authSubmit.textContent = '로그인';
@@ -574,8 +579,8 @@ document.getElementById('login-open').onclick = () => {
   authModal.style.display = 'flex';
 };
 
-// 회원가입 창 열기
-document.getElementById('signup-open').onclick = () => {
+// 회원가입 창
+signupOpen.onclick = () => {
   authMode = 'signup';
   authTitle.textContent = 'SIGN UP';
   authSubmit.textContent = '회원가입';
@@ -583,12 +588,11 @@ document.getElementById('signup-open').onclick = () => {
   authModal.style.display = 'flex';
 };
 
-// 로그인 창 닫기
 document.getElementById('auth-close').onclick = () => {
   authModal.style.display = 'none';
 };
 
-// 로그인 / 회원가입 실행
+// 회원가입 및 로그인
 authSubmit.onclick = async () => {
   const email = authEmail.value.trim();
   const password = authPassword.value;
@@ -606,69 +610,228 @@ authSubmit.onclick = async () => {
   authSubmit.disabled = true;
   authMessage.textContent = '처리 중...';
 
-  let result;
+  try {
+    let result;
 
-  if (authMode === 'signup') {
-    result = await supabaseClient.auth.signUp({
-      email,
-      password
-    });
-  } else {
-    result = await supabaseClient.auth.signInWithPassword({
-      email,
-      password
-    });
+    if (authMode === 'signup') {
+      result = await supabaseClient.auth.signUp({
+        email,
+        password
+      });
+    } else {
+      result = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
+    }
+
+    if (result.error) throw result.error;
+
+    if (authMode === 'signup' && !result.data.session) {
+      authMessage.textContent = '가입 완료! 이메일 인증 설정을 확인해 줘.';
+      return;
+    }
+
+    authModal.style.display = 'none';
+    await checkPlayerAccess();
+
+  } catch (error) {
+    authMessage.textContent = error.message;
+  } finally {
+    authSubmit.disabled = false;
   }
-
-  authSubmit.disabled = false;
-
-  if (result.error) {
-    authMessage.textContent = result.error.message;
-    return;
-  }
-
-  if (authMode === 'signup' && !result.data.session) {
-    authMessage.textContent = '가입 완료! 이메일 인증 설정을 확인해 줘.';
-    return;
-  }
-
-  authMessage.textContent = '로그인 성공!';
-  authModal.style.display = 'none';
-
-  updateLoginStatus();
 };
 
-// 로그인 상태 표시
-async function updateLoginStatus() {
-  const { data } = await supabaseClient.auth.getSession();
-  const user = data.session?.user;
+// 승인 상태 확인
+async function checkPlayerAccess() {
+  const { data: sessionData } =
+    await supabaseClient.auth.getSession();
 
-  document.getElementById('user-status').textContent =
-    user ? user.email : 'GUEST';
+  const user = sessionData.session?.user;
 
-  document.getElementById('login-open').style.display =
-    user ? 'none' : 'inline-block';
+  const dashboard = document.querySelector('.dashboard');
+  const adminPanel = document.getElementById('admin-panel');
+  const pendingScreen = document.getElementById('pending-screen');
 
-  document.getElementById('signup-open').style.display =
-    user ? 'none' : 'inline-block';
+  if (!user) {
+    document.getElementById('user-status').textContent = 'GUEST';
+    loginOpen.style.display = 'inline-block';
+    signupOpen.style.display = 'inline-block';
+    logoutBtn.style.display = 'none';
 
-  document.getElementById('logout-btn').style.display =
-    user ? 'inline-block' : 'none';
+    dashboard.style.display = 'none';
+    adminPanel.style.display = 'none';
+    pendingScreen.style.display = 'none';
+    return;
+  }
+
+  document.getElementById('user-status').textContent = user.email;
+  loginOpen.style.display = 'none';
+  signupOpen.style.display = 'none';
+  logoutBtn.style.display = 'inline-block';
+
+  const isAdmin = user.email.toLowerCase() === ADMIN_EMAIL;
+
+  const { data: profile, error } = await supabaseClient
+    .from('profiles')
+    .select('approved, status')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (error || !profile) {
+    dashboard.style.display = 'none';
+    pendingScreen.style.display = 'flex';
+    document.getElementById('pending-screen').querySelector('h2').textContent =
+      'PROFILE ERROR';
+    document.getElementById('pending-screen').querySelector('p').textContent =
+      '계정 정보를 불러오지 못했습니다. 관리자에게 문의해 주세요.';
+    adminPanel.style.display = 'none';
+    return;
+  }
+
+  if (isAdmin) {
+    dashboard.style.display = 'grid';
+    pendingScreen.style.display = 'none';
+    adminPanel.style.display = 'block';
+
+    loadAdminUsers();
+    return;
+  }
+
+  adminPanel.style.display = 'none';
+
+  if (profile.status === 'approved' && profile.approved) {
+    dashboard.style.display = 'grid';
+    pendingScreen.style.display = 'none';
+  } else {
+    dashboard.style.display = 'none';
+    pendingScreen.style.display = 'flex';
+
+    const title = pendingScreen.querySelector('h2');
+    const message = pendingScreen.querySelector('p');
+
+    if (profile.status === 'rejected') {
+      title.textContent = 'ACCESS REJECTED';
+      message.textContent = '가입 신청이 거절되었습니다.';
+    } else {
+      title.textContent = 'ACCESS PENDING';
+      message.textContent = '관리자의 가입 승인을 기다리고 있습니다.';
+    }
+  }
+}
+
+// 관리자 신청자 목록
+async function loadAdminUsers() {
+  const list = document.getElementById('admin-user-list');
+
+  list.textContent = '신청자 목록을 불러오는 중...';
+
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .select('user_id, email, status, created_at')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    list.textContent = '목록을 불러오지 못했습니다: ' + error.message;
+    return;
+  }
+
+  list.innerHTML = '';
+
+  if (!data.length) {
+    list.textContent = '가입 신청자가 없습니다.';
+    return;
+  }
+
+  data.forEach(player => {
+    const row = document.createElement('div');
+
+    row.style.cssText = `
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      padding:12px;
+      margin-top:10px;
+      background:#171416;
+      border:1px solid #49303a;
+      border-radius:5px;
+    `;
+
+    const info = document.createElement('div');
+
+    const email = document.createElement('div');
+    email.textContent = player.email;
+    email.style.color = '#eee';
+
+    const status = document.createElement('div');
+    status.textContent = '상태: ' + player.status;
+    status.style.cssText = 'font-size:12px;color:#bd6b83;margin-top:5px;';
+
+    info.append(email, status);
+    row.appendChild(info);
+
+    if (player.email.toLowerCase() !== ADMIN_EMAIL) {
+      const buttons = document.createElement('div');
+
+      const approve = document.createElement('button');
+      approve.textContent = '승인';
+      approve.onclick = () => changePlayerStatus(
+        player.user_id, 'approved'
+      );
+
+      const reject = document.createElement('button');
+      reject.textContent = '거절';
+      reject.style.marginLeft = '6px';
+      reject.onclick = () => changePlayerStatus(
+        player.user_id, 'rejected'
+      );
+
+      buttons.append(approve, reject);
+      row.appendChild(buttons);
+    }
+
+    list.appendChild(row);
+  });
+}
+
+// 승인 또는 거절 처리
+async function changePlayerStatus(userId, status) {
+  const action = status === 'approved' ? '승인' : '거절';
+
+  if (!confirm(`이 플레이어의 가입을 ${action}할까?`)) return;
+
+  const { error } = await supabaseClient
+    .from('profiles')
+    .update({
+      status: status,
+      approved: status === 'approved'
+    })
+    .eq('user_id', userId);
+
+  if (error) {
+    alert('처리 실패: ' + error.message);
+    return;
+  }
+
+  alert(`${action} 처리 완료!`);
+  loadAdminUsers();
 }
 
 // 로그아웃
-document.getElementById('logout-btn').onclick = async () => {
+logoutBtn.onclick = async () => {
   await supabaseClient.auth.signOut();
-  updateLoginStatus();
+  await checkPlayerAccess();
 };
 
-// 로그인 상태 변경 감지
+// 로그인 상태 변경
 supabaseClient.auth.onAuthStateChange(() => {
-  updateLoginStatus();
+  setTimeout(checkPlayerAccess, 0);
 });
 
-// 페이지 접속 시 로그인 상태 확인
-updateLoginStatus();
+// 최초 접속
+checkPlayerAccess();
 </script>
 </body>
 </html>
