@@ -2394,6 +2394,389 @@ document.getElementById('admin-item-give').onclick = () => {
 document.getElementById('admin-item-remove').onclick = () => {
   manageAdminInventory('remove');
 };
+  // ========================================
+// 관리자 능력치 관리
+// ========================================
+
+const statAdminOpen = document.getElementById('stat-admin-open');
+const statAdminPanel = document.getElementById('stat-admin-panel');
+const statAdminClose = document.getElementById('stat-admin-close');
+
+const adminStatPlayer = document.getElementById('admin-stat-player');
+const adminStatEditor = document.getElementById('admin-stat-editor');
+const adminStatMessage = document.getElementById('admin-stat-message');
+const adminStatSave = document.getElementById('admin-stat-save');
+
+const statTypes = ['health', 'mental', 'hunger'];
+
+let originalAdminStats = null;
+let currentAdminStats = null;
+let adminStatRequest = 0;
+let adminStatSaving = false;
+
+
+// 능력치 관리 팝업 열기
+statAdminOpen.onclick = async () => {
+  statAdminPanel.style.display = 'flex';
+  adminStatMessage.textContent = '';
+  adminStatEditor.style.display = 'none';
+
+  await loadAdminStatPlayers();
+};
+
+
+// 팝업 닫기
+statAdminClose.onclick = () => {
+  if (adminStatSaving) return;
+
+  adminStatRequest++;
+  statAdminPanel.style.display = 'none';
+};
+
+
+// 승인된 플레이어 목록 불러오기
+async function loadAdminStatPlayers() {
+
+  adminStatRequest++;
+
+  originalAdminStats = null;
+  currentAdminStats = null;
+
+  adminStatPlayer.innerHTML = '';
+  adminStatEditor.style.display = 'none';
+
+  const placeholder = document.createElement('option');
+
+  placeholder.value = '';
+  placeholder.textContent = '플레이어 선택';
+
+  adminStatPlayer.appendChild(placeholder);
+
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .select('user_id, player_name, email')
+    .eq('approved', true)
+    .eq('status', 'approved')
+    .order('player_name', { ascending: true });
+
+  if (error) {
+    adminStatMessage.textContent =
+      '플레이어 조회 실패: ' + error.message;
+    return;
+  }
+
+  data.forEach(player => {
+
+    if (player.email?.toLowerCase() === ADMIN_EMAIL) {
+      return;
+    }
+
+    const option = document.createElement('option');
+
+    option.value = player.user_id;
+    option.textContent = player.player_name || '이름 미등록';
+
+    adminStatPlayer.appendChild(option);
+
+  });
+
+}
+
+
+// 선택한 플레이어 능력치 불러오기
+async function loadAdminPlayerStats() {
+
+  const requestId = ++adminStatRequest;
+  const userId = adminStatPlayer.value;
+
+  adminStatMessage.textContent = '';
+  adminStatEditor.style.display = 'none';
+
+  originalAdminStats = null;
+  currentAdminStats = null;
+
+  if (!userId) return;
+
+  adminStatMessage.textContent = '능력치 불러오는 중...';
+
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .select('health, mental, hunger')
+    .eq('user_id', userId)
+    .eq('approved', true)
+    .eq('status', 'approved')
+    .single();
+
+  if (requestId !== adminStatRequest) return;
+
+  if (error) {
+    adminStatMessage.textContent =
+      '능력치 조회 실패: ' + error.message;
+    return;
+  }
+
+  originalAdminStats = {
+    health: data.health,
+    mental: data.mental,
+    hunger: data.hunger
+  };
+
+  currentAdminStats = {
+    ...originalAdminStats
+  };
+
+  document.getElementById('admin-stat-reason').value = '';
+
+  adminStatMessage.textContent = '';
+  adminStatEditor.style.display = 'block';
+
+  renderAdminStats();
+
+}
+
+
+// 플레이어 선택 시 능력치 조회
+adminStatPlayer.onchange = loadAdminPlayerStats;
+
+
+// 능력치 화면 갱신
+function renderAdminStats() {
+
+  if (!originalAdminStats || !currentAdminStats) return;
+
+  statTypes.forEach(type => {
+
+    const original = originalAdminStats[type];
+    const current = currentAdminStats[type];
+    const difference = current - original;
+
+    const display = document.getElementById(
+      `admin-${type}-display`
+    );
+
+    const fill = document.getElementById(
+      `admin-${type}-fill`
+    );
+
+    const input = document.getElementById(
+      `admin-${type}-input`
+    );
+
+    const change = document.getElementById(
+      `admin-${type}-change`
+    );
+
+    const color = current <= 5
+      ? '#9b304d'
+      : '#789184';
+
+    display.textContent = `${current} / 100`;
+    display.style.color = color;
+
+    fill.style.width = `${current}%`;
+    fill.style.backgroundColor = color;
+
+    input.value = current;
+    input.style.color = color;
+
+    if (difference === 0) {
+
+      change.textContent = '변동 없음';
+      change.style.color = '#998c92';
+
+    } else {
+
+      const sign = difference > 0 ? '+' : '';
+
+      change.textContent =
+        `${original} → ${current} (${sign}${difference})`;
+
+      change.style.color = difference > 0
+        ? '#a9c6b5'
+        : '#d88ca3';
+
+    }
+
+  });
+
+  adminStatSave.disabled =
+    adminStatSaving ||
+    statTypes.every(type =>
+      originalAdminStats[type] === currentAdminStats[type]
+    );
+
+}
+
+
+// 능력치 변경
+function changeAdminStat(type, value) {
+
+  if (!currentAdminStats || adminStatSaving) return;
+
+  if (!statTypes.includes(type)) return;
+  if (!Number.isFinite(value)) return;
+
+  currentAdminStats[type] = Math.max(
+    0,
+    Math.min(100, Math.round(value))
+  );
+
+  adminStatMessage.textContent = '';
+
+  renderAdminStats();
+
+}
+
+
+// +, - 버튼 연결
+document.querySelectorAll(
+  '#stat-admin-panel button[data-stat][data-delta]'
+).forEach(button => {
+
+  button.onclick = () => {
+
+    if (!currentAdminStats || adminStatSaving) return;
+
+    const type = button.dataset.stat;
+    const delta = Number(button.dataset.delta);
+
+    changeAdminStat(
+      type,
+      currentAdminStats[type] + delta
+    );
+
+  };
+
+});
+
+
+// 숫자 직접 입력
+statTypes.forEach(type => {
+
+  const input = document.getElementById(
+    `admin-${type}-input`
+  );
+
+  input.onchange = () => {
+
+    if (input.value.trim() === '') {
+      renderAdminStats();
+      return;
+    }
+
+    changeAdminStat(type, Number(input.value));
+
+  };
+
+});
+
+
+// 초기화 버튼
+document.getElementById('admin-stat-reset').onclick = () => {
+
+  if (!originalAdminStats || adminStatSaving) return;
+
+  currentAdminStats = {
+    ...originalAdminStats
+  };
+
+  document.getElementById('admin-stat-reason').value = '';
+
+  adminStatMessage.textContent = '';
+
+  renderAdminStats();
+
+};
+
+
+// 저장 중 조작 방지
+function setAdminStatSaving(saving) {
+
+  adminStatSaving = saving;
+
+  statAdminPanel.querySelectorAll(
+    'button, input, select, textarea'
+  ).forEach(element => {
+    element.disabled = saving;
+  });
+
+  if (!saving) {
+    renderAdminStats();
+  }
+
+}
+
+
+// 능력치 변경 저장
+adminStatSave.onclick = async () => {
+
+  if (adminStatSaving) return;
+
+  if (!originalAdminStats || !currentAdminStats) return;
+
+  const userId = adminStatPlayer.value;
+
+  if (!userId) return;
+
+  const playerName =
+    adminStatPlayer.options[
+      adminStatPlayer.selectedIndex
+    ].textContent;
+
+  const reason = document.getElementById(
+    'admin-stat-reason'
+  ).value.trim();
+
+  const confirmed = confirm(
+    `${playerName}의 능력치를 변경하시겠습니까?\n\n` +
+    `체력: ${originalAdminStats.health} → ${currentAdminStats.health}\n` +
+    `정신력: ${originalAdminStats.mental} → ${currentAdminStats.mental}\n` +
+    `허기: ${originalAdminStats.hunger} → ${currentAdminStats.hunger}`
+  );
+
+  if (!confirmed) return;
+
+  setAdminStatSaving(true);
+
+  adminStatMessage.textContent = '변경 사항 저장 중...';
+
+  try {
+
+    const { error } = await supabaseClient.rpc(
+      'admin_update_player_stats',
+      {
+        p_user_id: userId,
+        p_health: currentAdminStats.health,
+        p_mental: currentAdminStats.mental,
+        p_hunger: currentAdminStats.hunger,
+        p_reason: reason
+      }
+    );
+
+    if (error) throw error;
+
+    await loadAdminPlayerStats();
+
+    if (originalAdminStats) {
+      adminStatMessage.textContent =
+        `${playerName}의 능력치 변경 완료!`;
+    } else {
+      adminStatMessage.textContent =
+        '변경은 저장되었지만 능력치를 다시 불러오지 못했습니다.';
+    }
+
+  } catch (error) {
+
+    adminStatMessage.textContent =
+      '능력치 변경 실패: ' + error.message;
+
+  } finally {
+
+    setAdminStatSaving(false);
+
+  }
+
+};
 async function checkPlayerAccess() {
   const { data: sessionData } =
     await supabaseClient.auth.getSession();
@@ -2406,6 +2789,8 @@ async function checkPlayerAccess() {
 adminOpen.style.display = 'none';
 itemAdminOpen.style.display = 'none';
 itemAdminPanel.style.display = 'none';
+  statAdminOpen.style.display = 'none';
+statAdminPanel.style.display = 'none';
   if (!user) {
     document.getElementById('user-status').textContent = 'GUEST';
     loginOpen.style.display = 'inline-block';
@@ -2449,7 +2834,7 @@ document.getElementById('user-status').textContent =
   adminPanel.style.display = 'none';
 adminOpen.style.display = 'inline-block';
 itemAdminOpen.style.display = 'inline-block';
-
+statAdminOpen.style.display = 'inline-block';
   renderPlayerProfile(profile);
 
   return;
