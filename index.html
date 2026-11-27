@@ -1,1 +1,480 @@
+```html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UNKNOWN - Exploration System</title>
 
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #121012;
+  color: #e8e1e4;
+  font-family: Arial, sans-serif;
+}
+
+header {
+  height: 65px;
+  padding: 0 25px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1c171a;
+  border-bottom: 1px solid #422631;
+}
+
+.logo {
+  color: #a64d68;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 3px;
+}
+
+.login-area {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+button {
+  background: #54283a;
+  border: 1px solid #854057;
+  color: #f2e8ec;
+  padding: 8px 14px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+button:hover {
+  background: #71374e;
+}
+
+input {
+  background: #171315;
+  border: 1px solid #50313c;
+  color: white;
+  padding: 9px;
+  border-radius: 4px;
+  min-width: 0;
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 12px;
+  padding: 15px;
+}
+
+/* 왼쪽 플레이어 패널 */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.widget {
+  background: #1c181a;
+  border: 1px solid #3d2931;
+  border-radius: 6px;
+  padding: 15px;
+}
+
+.widget-title {
+  color: #bd6b83;
+  font-size: 13px;
+  letter-spacing: 1px;
+  margin-bottom: 15px;
+  font-weight: bold;
+}
+
+.player-name {
+  font-size: 17px;
+  margin-bottom: 18px;
+}
+
+.stat {
+  margin-bottom: 18px;
+}
+
+.stat-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 7px;
+  color: #b9aeb3;
+}
+
+.stat-bar {
+  height: 8px;
+  background: #30262b;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.stat-fill {
+  height: 100%;
+  background: #9b4963;
+  border-radius: 10px;
+}
+
+.item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item {
+  padding: 10px;
+  background: #171416;
+  border: 1px solid #382830;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.item-count {
+  color: #bd6b83;
+}
+
+/* 오른쪽 영역 */
+.main-area {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.map-panel {
+  height: 550px;
+  position: relative;
+  overflow: hidden;
+  background: #141114;
+  border: 1px solid #49303a;
+  border-radius: 6px;
+  cursor: grab;
+}
+
+.map-panel.dragging {
+  cursor: grabbing;
+}
+
+#grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(#30272c 1px, transparent 1px),
+    linear-gradient(90deg, #30272c 1px, transparent 1px);
+  background-size: 50px 50px;
+  background-position: 0 0;
+}
+
+.map-label {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  font-size: 11px;
+  color: #8d7c84;
+  pointer-events: none;
+}
+
+.map-center {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #b65b78;
+  box-shadow: 0 0 12px #b65b78;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.map-coordinates {
+  position: absolute;
+  bottom: 15px;
+  left: 15px;
+  font-size: 11px;
+  color: #b78a9a;
+  background: #1c171a;
+  padding: 8px 12px;
+  border: 1px solid #49303a;
+  pointer-events: none;
+}
+
+/* 무전기 */
+.radio-panel {
+  height: 65px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 0 16px;
+  background: #21191d;
+  border: 1px solid #653448;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.radio-label {
+  color: #c46d87;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.radio-message {
+  font-size: 12px;
+  color: #d8cbd0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 활동 로그 */
+.log-panel {
+  min-height: 200px;
+  background: #1c181a;
+  border: 1px solid #3d2931;
+  border-radius: 6px;
+  padding: 15px;
+}
+
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12px;
+  color: #a99da2;
+}
+
+.log-entry {
+  padding-bottom: 9px;
+  border-bottom: 1px solid #30252a;
+  line-height: 1.6;
+}
+
+.log-time {
+  color: #bd6b83;
+  margin-right: 10px;
+}
+
+/* 반응형 */
+@media (max-width: 700px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .map-panel {
+    height: 400px;
+  }
+
+  header {
+    padding: 0 12px;
+  }
+
+  .logo {
+    font-size: 13px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">UNKNOWN / EXPLORATION</div>
+
+  <div class="login-area">
+    <span style="font-size:12px;color:#998c92;">GUEST</span>
+    <button type="button">로그인</button>
+  </div>
+</header>
+
+<div class="dashboard">
+
+  <!-- 왼쪽 플레이어 정보 -->
+  <aside class="sidebar">
+
+    <section class="widget">
+      <div class="widget-title">PLAYER STATUS</div>
+
+      <div class="player-name">미등록 플레이어</div>
+
+      <div class="stat">
+        <div class="stat-header">
+          <span>체력</span>
+          <span>100 / 100</span>
+        </div>
+        <div class="stat-bar">
+          <div class="stat-fill" style="width:100%"></div>
+        </div>
+      </div>
+
+      <div class="stat">
+        <div class="stat-header">
+          <span>정신력</span>
+          <span>100 / 100</span>
+        </div>
+        <div class="stat-bar">
+          <div class="stat-fill" style="width:100%"></div>
+        </div>
+      </div>
+
+      <div class="stat" style="margin-bottom:0">
+        <div class="stat-header">
+          <span>허기</span>
+          <span>100 / 100</span>
+        </div>
+        <div class="stat-bar">
+          <div class="stat-fill" style="width:100%"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="widget">
+      <div class="widget-title">INVENTORY</div>
+
+      <div class="item-list">
+        <div class="item">
+          <span>보유 아이템 없음</span>
+          <span class="item-count">-</span>
+        </div>
+      </div>
+    </section>
+
+  </aside>
+
+  <!-- 오른쪽 지도 및 기록 -->
+  <main class="main-area">
+
+    <section class="map-panel" id="map">
+      <div id="grid"></div>
+
+      <div class="map-label">
+        EXPLORATION MAP
+      </div>
+
+      <div class="map-center"></div>
+
+      <div class="map-coordinates" id="coordinates">
+        X : 0 / Y : 0 / ZOOM : 100%
+      </div>
+    </section>
+
+    <section class="radio-panel">
+      <div class="radio-label">📻 RADIO</div>
+      <div class="radio-message">
+        현재 수신된 무전 메시지가 없습니다.
+      </div>
+    </section>
+
+    <section class="log-panel">
+      <div class="widget-title">ACTIVITY LOG</div>
+
+      <div class="log-list">
+        <div class="log-entry">
+          <span class="log-time">SYSTEM</span>
+          탐험 시스템에 접속했습니다.
+        </div>
+
+        <div class="log-entry">
+          <span class="log-time">SYSTEM</span>
+          플레이어 정보가 아직 등록되지 않았습니다.
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+</div>
+
+<script>
+const map = document.getElementById("map");
+const grid = document.getElementById("grid");
+const coordinates = document.getElementById("coordinates");
+
+let x = 0;
+let y = 0;
+let scale = 1;
+
+let dragging = false;
+let startX = 0;
+let startY = 0;
+
+function updateMap() {
+  const size = 50 * scale;
+
+  grid.style.backgroundSize = `${size}px ${size}px`;
+  grid.style.backgroundPosition = `${x}px ${y}px`;
+
+  coordinates.textContent =
+    `X : ${Math.round(-x / size)} / Y : ${Math.round(-y / size)} / ZOOM : ${Math.round(scale * 100)}%`;
+}
+
+map.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0) return;
+
+  dragging = true;
+  startX = e.clientX - x;
+  startY = e.clientY - y;
+
+  map.classList.add("dragging");
+  map.setPointerCapture(e.pointerId);
+});
+
+map.addEventListener("pointermove", (e) => {
+  if (!dragging) return;
+
+  x = e.clientX - startX;
+  y = e.clientY - startY;
+
+  updateMap();
+});
+
+map.addEventListener("pointerup", () => {
+  dragging = false;
+  map.classList.remove("dragging");
+});
+
+map.addEventListener("pointercancel", () => {
+  dragging = false;
+  map.classList.remove("dragging");
+});
+
+map.addEventListener("wheel", (e) => {
+  e.preventDefault();
+
+  const oldScale = scale;
+  const rect = map.getBoundingClientRect();
+
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  scale *= e.deltaY < 0 ? 1.1 : 0.9;
+  scale = Math.max(0.25, Math.min(3, scale));
+
+  x = mouseX - (mouseX - x) * (scale / oldScale);
+  y = mouseY - (mouseY - y) * (scale / oldScale);
+
+  updateMap();
+}, { passive: false });
+
+updateMap();
+</script>
+
+</body>
+</html>
+```
