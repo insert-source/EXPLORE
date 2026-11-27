@@ -9989,7 +9989,9 @@ function showLocationDetail(location) {
     mentalLossMax > 0 ? `-${mentalLossMax}` : '0';
 
 const isLocked = location.can_explore === false;
-
+document.getElementById(
+  'location-detail-explore'
+).closest('.location-detail-row').style.display = 'flex';
 document.getElementById(
   'location-detail-coordinates'
 ).style.display = isLocked ? 'none' : '';
