@@ -3268,6 +3268,45 @@ label[for="admin-location-travel"] {
 @media (max-width: 1050px) {
   .location-editor-columns { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Mobile tabs: desktop layout unchanged */
+#mobile-tabs,#mobile-menu-toggle,#mobile-current-location,#mobile-map-zoom {display:none;}
+@media(max-width:768px){
+ body{overflow-x:hidden;}
+ header{position:sticky;top:0;z-index:30;height:48px;padding:0 10px;}
+ header .logo{font-size:12px;letter-spacing:1px;}
+ #mobile-menu-toggle{display:block;min-height:36px;}
+ header .login-area{display:none;position:absolute;right:8px;top:48px;max-width:calc(100vw - 16px);background:#21191d;border:1px solid #653448;padding:10px;flex-wrap:wrap;z-index:31;}
+ header .login-area.mobile-open{display:flex;}
+ .dashboard{grid-template-columns:minmax(0,1fr);gap:8px;padding:8px;}
+ .dashboard>.sidebar,.dashboard>.main-area{display:contents;}
+ #mobile-status-widget{grid-row:1;position:sticky;top:48px;z-index:20;padding:8px 10px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px 8px;}
+ #mobile-status-widget>.widget-title{display:none;}
+ #mobile-status-widget>.player-name-row,#mobile-status-widget>#player-name-editor,#mobile-current-location{grid-column:1/-1;}
+ #mobile-status-widget .player-name{margin:0;font-size:14px;}
+ #mobile-status-widget .stat{margin:0;min-width:0;}
+ #mobile-status-widget .stat-header{font-size:10px;gap:3px;margin-bottom:4px;}
+ #mobile-current-location{display:block;font-size:11px;color:#b9aeb3;}
+ #mobile-tabs{display:flex;grid-row:2;position:sticky;top:var(--mobile-tabs-top,145px);z-index:19;background:#121012;gap:4px;padding:4px 0;}
+ #mobile-tabs button{flex:1;min-width:0;padding:9px 3px;min-height:42px;}
+ #mobile-tabs button[aria-pressed=true]{border-color:#d88ca3;box-shadow:inset 0 -2px #d88ca3;background:#713348;}
+ #mobile-radio-badge{color:#f2b4c5;font-size:10px;}
+ .dashboard[data-mobile-tab=map] #mobile-inventory-widget,.dashboard[data-mobile-tab=map] #mobile-will-widget,.dashboard[data-mobile-tab=map] #radio-panel,.dashboard[data-mobile-tab=map] .log-panel,
+ .dashboard[data-mobile-tab=inventory] #map,.dashboard[data-mobile-tab=inventory] #radio-panel,.dashboard[data-mobile-tab=inventory] .log-panel,
+ .dashboard[data-mobile-tab=radio] #map,.dashboard[data-mobile-tab=radio] #mobile-inventory-widget,.dashboard[data-mobile-tab=radio] #mobile-will-widget{display:none;}
+ #mobile-inventory-widget{grid-row:3;min-width:0;}
+ #mobile-will-widget{grid-row:4;min-width:0;}
+ #map{grid-row:3;height:calc(100dvh - var(--mobile-tabs-top,145px) - 64px);min-height:320px;touch-action:none;}
+ #location-detail-panel{width:270px;max-width:calc(100% - 16px);max-height:80%;touch-action:pan-y;}
+ #mobile-map-zoom{display:flex;flex-direction:column;position:absolute;right:8px;bottom:35px;z-index:7;gap:5px;}
+ #mobile-map-zoom button{width:42px;height:42px;padding:0;font-size:19px;}
+ #radio-panel{grid-row:3;flex-wrap:wrap;min-width:0;}
+ #radio-message{flex-basis:100%;white-space:pre-wrap;overflow-wrap:anywhere;order:5;}
+ .log-panel{grid-row:4;min-width:0;}
+ .log-list{max-height:none;}
+ input,textarea,select{max-width:100%;}
+}
+
 </style>
 </head>
 
@@ -3276,7 +3315,8 @@ label[for="admin-location-travel"] {
 <header>
   <div class="logo">NAAM Exploration System</div>
 
-<div class="login-area">
+<button id="mobile-menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-header-menu">☰ 메뉴</button>
+<div class="login-area" id="mobile-header-menu">
   <span id="user-status" style="font-size:12px;color:#998c92;">GUEST</span>
   <button type="button" id="login-open">로그인</button>
   <button type="button" id="signup-open">회원가입</button>
@@ -5096,12 +5136,13 @@ max-width:calc(100vw - 30px);
   </div>
 
 </div>
-<div class="dashboard">
+<div class="dashboard" data-mobile-tab="map">
+  <nav id="mobile-tabs" aria-label="화면 전환"><button type="button" data-tab="map" aria-pressed="true">지도</button><button type="button" data-tab="inventory" aria-pressed="false">소지품</button><button type="button" data-tab="radio" aria-pressed="false">무전&amp;기록 <span id="mobile-radio-badge" hidden></span></button></nav>
 
   <!-- 왼쪽 플레이어 정보 -->
   <aside class="sidebar">
 
-    <section class="widget">
+    <section class="widget" id="mobile-status-widget">
       <div class="widget-title">PLAYER STATUS</div>
 
   <div class="player-name-row" id="player-name-row">
@@ -5175,8 +5216,9 @@ max-width:calc(100vw - 30px);
   <div class="stat-fill" id="hunger-fill" style="width:0%"></div>
 </div>
       </div>
+    <div id="mobile-current-location">현재 위치 : -</div>
     </section>
-    <section class="widget">
+    <section class="widget" id="mobile-will-widget">
       <div class="widget-title">LAST WILL</div>
 
       <textarea
@@ -5211,7 +5253,7 @@ max-width:calc(100vw - 30px);
 
       <p id="will-message" style="font-size:12px;color:#d88ca3;"></p>
     </section>
-   <section class="widget">
+   <section class="widget" id="mobile-inventory-widget">
   <div class="widget-title">INVENTORY</div>
 
   <div class="item-list" id="inventory-list">
@@ -5341,6 +5383,7 @@ max-width:calc(100vw - 30px);
 
 <!-- 장소 상세 정보창 끝 -->
       <div id="grid"></div>
+      <div id="mobile-map-zoom"><button type="button" data-zoom="1.2" aria-label="지도 확대">＋</button><button type="button" data-zoom="0.833333" aria-label="지도 축소">－</button></div>
 
       <div class="map-label">
         EXPLORATION MAP
@@ -5572,6 +5615,8 @@ map.appendChild(playerMapPosition);
 function updatePlayerMapPosition() {
 
   playerMapPosition.style.display = 'none';
+  const current = mapLocations.find(l => l.id === playerMovement?.current_location_id);
+  document.getElementById('mobile-current-location').textContent = '현재 위치 : ' + (current?.name || '-');
 
 }
 
@@ -9003,6 +9048,9 @@ function renderRadioPanel() {
     unreadCount > 0 ? 'inline-block' : 'none';
 
   radioNew.textContent = `NEW ${unreadCount}`;
+  const badge = document.getElementById('mobile-radio-badge');
+  badge.hidden = unreadCount === 0;
+  badge.textContent = unreadCount ? String(unreadCount) : '';
 
   radioPanel.classList.toggle(
     'has-unread',
@@ -10180,6 +10228,16 @@ function updateLocationDetailPosition() {
 
   const gap = 25;
   const margin = 10;
+
+  if (window.matchMedia('(max-width:768px)').matches) {
+    const left = Math.max(margin, Math.min(markerX - panelWidth / 2, mapWidth - panelWidth - margin));
+    let top = markerY - panelHeight - 14;
+    if (top < margin && markerY + 20 + panelHeight <= mapHeight - margin) top = markerY + 20;
+    top = Math.max(margin, Math.min(top, mapHeight - panelHeight - margin));
+    locationDetailPanel.style.left = `${left}px`;
+    locationDetailPanel.style.top = `${top}px`;
+    return;
+  }
 
   // 장소 오른쪽에 상세창 배치
   let left = markerX + gap;
@@ -14350,6 +14408,7 @@ document.getElementById(
   if (locationSaving) return;
 
   locationPicking = true;
+  if (window.matchMedia('(max-width:768px)').matches) document.querySelector('#mobile-tabs [data-tab="map"]').click();
 
   locationAdminPanel.style.display = 'none';
 
@@ -15997,6 +16056,41 @@ async function openInitialReview(player){
 checkPlayerAccess();
 </script>
  
+
+
+<script>
+(() => {
+ const dashboard = document.querySelector('.dashboard');
+ const tabs = document.getElementById('mobile-tabs');
+ const menu = document.getElementById('mobile-menu-toggle');
+ const menuBody = document.getElementById('mobile-header-menu');
+ const mobile = matchMedia('(max-width:768px)');
+ const status = document.getElementById('mobile-status-widget');
+ const syncHeight = () => dashboard.style.setProperty('--mobile-tabs-top', `${48 + status.offsetHeight + 8}px`);
+ if (window.ResizeObserver) new ResizeObserver(syncHeight).observe(status);
+ menu.addEventListener('click', () => menu.setAttribute('aria-expanded', String(menuBody.classList.toggle('mobile-open'))));
+ menuBody.addEventListener('click', e => {if(e.target.closest('button')){menuBody.classList.remove('mobile-open');menu.setAttribute('aria-expanded','false');}});
+ tabs.addEventListener('click', e => {
+   const btn = e.target.closest('[data-tab]'); if(!btn)return;
+   if(locationPicking && btn.dataset.tab !== 'map')return;
+   dashboard.dataset.mobileTab=btn.dataset.tab;
+   tabs.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b===btn)));
+   window.scrollTo(0,0);
+   if(btn.dataset.tab==='map')requestAnimationFrame(updateMap);
+ });
+ mobile.addEventListener('change',()=>{syncHeight();requestAnimationFrame(updateMap);});
+ const zoom = document.getElementById('mobile-map-zoom');
+ function zoomAt(factor,cx,cy){const old=scale;scale=Math.max(.25,Math.min(3,scale*factor));x=cx-(cx-x)*scale/old;y=cy-(cy-y)*scale/old;updateMap();}
+ zoom.addEventListener('pointerdown',e=>e.stopPropagation());
+ zoom.addEventListener('click',e=>{const b=e.target.closest('[data-zoom]');if(b)zoomAt(Number(b.dataset.zoom),map.clientWidth/2,map.clientHeight/2);});
+ const touches=new Map();let previous=null;
+ map.addEventListener('pointerdown',e=>{if(!mobile.matches||e.pointerType!=='touch'||locationPicking||e.target.closest('button,#location-detail-panel,.map-location,.map-player-entry'))return;touches.set(e.pointerId,{x:e.clientX,y:e.clientY});if(touches.size===2){dragging=false;previous=null;map.setPointerCapture(e.pointerId);e.stopImmediatePropagation();}},true);
+ map.addEventListener('pointermove',e=>{if(!touches.has(e.pointerId))return;touches.set(e.pointerId,{x:e.clientX,y:e.clientY});if(touches.size!==2)return;e.stopImmediatePropagation();const [a,b]=touches.values();const rect=map.getBoundingClientRect();const now={d:Math.hypot(a.x-b.x,a.y-b.y),x:(a.x+b.x)/2-rect.left,y:(a.y+b.y)/2-rect.top};if(previous&&previous.d>0){x+=now.x-previous.x;y+=now.y-previous.y;zoomAt(now.d/previous.d,now.x,now.y);}previous=now;},true);
+ function endTouch(e){if(!touches.has(e.pointerId))return;touches.delete(e.pointerId);previous=null;dragging=false;map.classList.remove('dragging');}
+ map.addEventListener('pointerup',endTouch,true);map.addEventListener('pointercancel',endTouch,true);map.addEventListener('lostpointercapture',endTouch,true);
+ syncHeight();
+})();
+</script>
 
 </body>
 </html>
